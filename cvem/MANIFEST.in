@@ -1,0 +1,8 @@
+include scripts/cvem
+include etc/cvem.cfg
+include etc/one.cfg
+include LICENSE
+include INSTALL
+include NOTICE
+include changelog
+include logging.conf

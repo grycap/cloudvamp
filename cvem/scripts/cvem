@@ -1,0 +1,136 @@
+#!/bin/bash
+#
+# -------------------------------------------------------------------------- #
+# Copyright 2015, Universitat Politecnica de Valencia                        #
+#                                                                            #
+# Licensed under the Apache License, Version 2.0 (the "License"); you may    #
+# not use this file except in compliance with the License. You may obtain    #
+# a copy of the License at                                                   #
+#                                                                            #
+# http://www.apache.org/licenses/LICENSE-2.0                                 #
+#                                                                            #
+# Unless required by applicable law or agreed to in writing, software        #
+# distributed under the License is distributed on an "AS IS" BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   #
+# See the License for the specific language governing permissions and        #
+# limitations under the License.                                             #
+#--------------------------------------------------------------------------- #
+
+### BEGIN INIT INFO
+# Provides:             cvem
+# Required-Start:       
+# Required-Stop:        
+# Default-Start:        2 3 4 5
+# Default-Stop:         0 1 6 
+# Short-Description:    CVEM - Cloud Virtual Elastic Manager
+### END INIT INFO
+
+# chkconfig: 2345 99 05
+# description: CVEM - Cloud Virtual Elastic Manager
+
+
+LOG_PATH=/var/log/cvem
+DAEMON=cvemd.py
+
+which ${DAEMON} > /dev/null 2> /dev/null
+if [ $? -ne 0 ]; then
+	echo "[Error] ${DAEMON} not in found"
+	exit 1
+fi
+
+# the server will record its PID in this file
+# use a different path for non root users
+PIDFILE=/var/run/cvem.pid
+
+function start() {
+        echo -n "Starting CVEM Daemon: "
+        test -d ${LOG_PATH} || mkdir ${LOG_PATH}
+        if [ $? -ne 0 ]; then
+                echo "[Error]"
+                return
+        fi
+        ${DAEMON} 2> ${LOG_PATH}/cvem.err &
+        pid=$!
+        echo ${pid} > ${PIDFILE}
+        sleep 2
+        alive=`ps ${pid} | grep ${pid} | wc -l`
+        if [ ${alive} -eq 1 ]
+        then
+                echo "[OK]"
+        else
+                echo "[Error]"
+        fi
+}
+
+function stop() {
+        echo -n "Stopping CVEM Daemon: "
+        if [ -f ${PIDFILE} ]
+        then
+                kill `cat ${PIDFILE}`
+                rm -f ${PIDFILE}
+        fi
+        echo "[OK]"
+}
+
+function status() {
+        if ! [ -f ${PIDFILE} ]
+        then
+                echo "CVEM Daemon Stopped"
+		exit 1
+        else
+                pid=`cat ${PIDFILE}`
+                alive=`ps ${pid} | grep ${pid} | wc -l`
+                if [ ${alive} -eq 0 ]
+                then
+                        echo "PID file exists but CVEM Daemon Stopped. Removing PID file"
+                        rm -f ${PIDFILE}
+			exit 2
+                else
+                        echo "CVEM Daemon Running (PID: ${pid})"
+			exit 0
+                fi
+        fi
+}
+
+# See how we were called.
+case "$1" in
+  start)
+        # check if the IM daemon is running
+        if ! [ -f ${PIDFILE} ]
+        then
+                start
+        else
+                pid=`cat ${PIDFILE}`
+                alive=`ps ${pid} | grep ${pid} | wc -l`
+                if [ ${alive} -eq 0 ]
+                then
+                        rm -f ${PIDFILE}
+                        start
+                else
+                        echo "CVEM Daemon Running (PID: ${pid})"
+                fi
+        fi
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        stop
+        sleep 1s
+        start
+        ;;
+  status)
+        status
+        ;;
+  restart)
+        $0 stop
+        # give server time to die cleanly
+        sleep 2
+        $0 start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|status|restart}"
+        exit 1
+esac
+
+exit 0
