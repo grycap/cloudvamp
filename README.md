@@ -1,27 +1,26 @@
 # CloudVAMP - Cloud Virtual Machine Automatic Memory Packing
-(c) 2015 - Universitat Politecnica de Valencia - GRyCAP
 
-## 1. ABOUT
+## ABOUT
 
-### 1.1 What is CloudVAMP?
+### What is CloudVAMP?
 
 CloudVAMP stands for "Cloud Virtual Machine Automatic Memory Packing" and it is an automatic system that enables and manages memory overcommiting in a Cloud on-premises platform based in OpenNebula.
 
-### 1.2 Why CloudVAMP?
+### Why CloudVAMP?
 
 Users usually have Virtual Machines (VM) with more resources than needed wether they are able to request a free amount of resources and they do not know what are the actual requirements for the application that they are inteded to run, or there are fixed templates for the  VM and they exceed the requirements of the applications.
   
-### 1.3 How does CloudVAMP work?
+### How does CloudVAMP work?
   
 CloudVAMP "borrows" the memory that is not used in the running VM, and makes it available for other VMs. If the memory is later needed by the original VM, it is returned to it.
   
-### 1.4 What are the technical details?
+### What are the technical details?
 
 If a VM is not using part of the memory, CloudVAMP varies the amount of memory allocated by the hypervisor to the VM to fit (with a margin) the running applications. The host that is hosting the VM will then have an extra amount of "packed memory" that can be assigned to other VMs.
 
 That is why memory overcommiting may happen, as the sum of memory requested by the VMs hosted in the host is greater than the physical amount of memory. If memory is later needed and the host is memory-overcommited, CloudVAMP will use live-migration of VMs to make rooom for the VMs.
 
-## 2. Installing
+## Installing
 
 The current version of CloudVAMP is available for OpenNebula. It has been tested in version 4.8 but it is likely to work with version 4.0 and upper of OpenNebula. The installation consists of three steps:
 
@@ -29,7 +28,7 @@ The current version of CloudVAMP is available for OpenNebula. It has been tested
 2. CloudVAMP memory reporter
 3. CloudVAMP overcommitment granter
 
-###2.1 Getting CloudVAMP from git
+### Getting CloudVAMP from git
 
 #### Download CloudVAMP from git:
   ```
@@ -44,13 +43,13 @@ or
     $ mv cloudvamp-master cloudvamp
   ```
   
-###2.2 Installing CloudVAMP agent (aka CVEM)
+### Installing CloudVAMP agent (aka CVEM)
 
-####2.2.1 Requirements
+#### Requirements
   
 CVEM uses the library cpyutils. Follow the instructions from `https://github.com/grycap/cpyutils` to install it.
 
-####2.2.2 Install in the system path
+#### Install in the system path
 
 Enter the CVEM directory in the downloaded files and perform the setup installation.
   ```
@@ -58,7 +57,7 @@ Enter the CVEM directory in the downloaded files and perform the setup installat
     $ python setup install
   ```
 
-####2.2.3 Install in a specific path
+#### Install in a specific path
 
 Select a proper path where to install the CVEM service (i.e. `/usr/local/cvem`, `/opt/cvem` or other). This path will be called `CVEM_PATH`.
   ```
@@ -70,7 +69,7 @@ Finally you must copy (or link) `$CVEM_PATH/scripts/cvem` file to `/etc/init.d` 
     $ ln -s /usr/local/cvem/scripts/cvem /etc/init.d
   ```
 
-####2.2.4 Configuration
+#### Configuration
 
 In case that you want the CVEM service to be started at boot time, you must execute the next set of commands:
 
@@ -97,7 +96,7 @@ Finally edit the configurations files *.cfg located in the etc/ directory where 
 * `cvem.cfg`: CVEM configuration file.
 * `one.cfg`: OpenNebula specific configuration file.
 
-###2.3 Installing CloudVAMP memory reporter
+### Installing CloudVAMP memory reporter
 
 The memory reporter relies on the OpenNebula contextualization scripts. So it must be installed on the Virtual Machine images used in the platform. See more information in `http://docs.opennebula.org/4.12/user/virtual_machine_setup/bcont.html`
   
@@ -114,9 +113,9 @@ Then all the templates of the VMs must be configured to activate the OpenNebula 
         TOKEN = "YES" ]
   ```
 
-###2.4 Installing CloudVAMP overcommitment granter
+### Installing CloudVAMP overcommitment granter
 
-####2.4.1 Getting the IM and the VMM
+#### Getting the IM and the VMM
 
 The CloudVAMP overcommitment granter consists of 2 parts: a Infrastructure Manager (IM) and a Virtual Machine Manager (VMM).
   
@@ -160,7 +159,7 @@ And create a folder for the cloudvamp im as a link to the kvm one:
     $ ln -s /var/lib/one/remotes/im/kvm.d /var/lib/one/remotes/im/cloudvamp.d
   ```
     
-####2.4.2 Activating CloudVAMP in ONE
+#### Activating CloudVAMP in ONE
   
 Edit the one configuration file (i.e. `/etc/one/oned.conf`) and add the following lines
   
@@ -184,7 +183,7 @@ And restart ONE
   $ one restart
   ```
   
-####2.4.3 Activating CloudVAMP for the nodes
+#### Activating CloudVAMP for the nodes
   
 Now you should delete (or deactivate) the nodes under the control of ONE and create them again using the cloudvamp im and vmm. This will only apply to these VMs that are running the KVM hypervisor
   
@@ -195,8 +194,11 @@ Now you should delete (or deactivate) the nodes under the control of ONE and cre
   $ onehost create myhost01 -i cloudvamp -v cloudvamp -n dummy
   ```
   
-####2.4.4 Tunning CloudVAMP memory
+#### Tunning CloudVAMP memory
   
 In case that you do not want that all the memory borrowed from the running vms is dedicated to other VMs, you can tune the $O value from file `/var/lib/one/remotes/im/cloudvamp-probes.d/cloudvamp.rb`.
   
 > E.g. If you want that only the 80% of borrowed memory is dedicated for possible autocomission, please search for the line $O = 1.0 and set it to $O = 0.8 (take into account that it is a floating point number, in case that you get back to 100%)
+
+## Copyright and License
+Code and documentation (c) 2015 - Universitat Politecnica de Valencia - GRyCAP. Licensed under the Apache License 2.0
