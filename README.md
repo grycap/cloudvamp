@@ -1,10 +1,10 @@
-# CloudVAMP - Cloud Virtual Machine Automatic Memory Packing
+# CloudVAMP - Cloud Virtual Machine Automatic Memory Procurement
 
 ## ABOUT
 
 ### What is CloudVAMP?
 
-CloudVAMP stands for "Cloud Virtual Machine Automatic Memory Packing" and it is an automatic system that enables and manages memory overcommiting in a Cloud on-premises platform based in OpenNebula.
+CloudVAMP stands for "Cloud Virtual Machine Automatic Memory Procurement" and it is an automatic system that enables and manages memory overcommiting in a Cloud on-premises platform based in OpenNebula.
 
 ### Why CloudVAMP?
 
@@ -16,7 +16,7 @@ CloudVAMP "borrows" the memory that is not used in the running VM, and makes it 
   
 ### What are the technical details?
 
-If a VM is not using part of the memory, CloudVAMP varies the amount of memory allocated by the hypervisor to the VM to fit (with a margin) the running applications. The host that is hosting the VM will then have an extra amount of "packed memory" that can be assigned to other VMs.
+If a VM is not using part of the memory, CloudVAMP varies the amount of memory allocated by the hypervisor to the VM to fit (with a margin) the running applications. The host that is hosting the VM will then have an extra amount of "stolen memory" that can be assigned to other VMs.
 
 That is why memory overcommiting may happen, as the sum of memory requested by the VMs hosted in the host is greater than the physical amount of memory. If memory is later needed and the host is memory-overcommited, CloudVAMP will use live-migration of VMs to make rooom for the VMs.
 
