@@ -63,6 +63,8 @@ class Config:
 	USER_FILTER = None
 	# Flag to make just a test without modify any VM
 	ONLY_TEST = True
+	# Minimum amount of free memory to activate the exponential backoff.
+	MIN_FREE_MEMORY = 20000
 	
 logging.config.fileConfig(Config.CVEM_PATH + '/logging.conf')
 logger = logging.getLogger('monitor')

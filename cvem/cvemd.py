@@ -104,6 +104,7 @@ class Monitor:
 		"""
 		Main function of the monitor
 		"""
+		no_free_memory_count = 0 
 		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
 		if vm.id not in self.mem_diff:
 			self.mem_diff[vm.id] = vm.real_memory - vm.total_memory
@@ -116,6 +117,7 @@ class Monitor:
 		
 		logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
 		logger.info(vmid_msg + "Free Memory: %d" % vm.free_memory)
+		
 		if vm_pct_free_memory < (Config.MEM_OVER - Config.MEM_MARGIN) or vm_pct_free_memory > (Config.MEM_OVER + Config.MEM_MARGIN):
 			now = time.time()
 	
@@ -130,10 +132,23 @@ class Monitor:
 			if (now - self.last_set_mem[vm.id]) < Config.COOLDOWN:
 				logger.debug(vmid_msg + "It is in cooldown period. No changing the memory.")
 			else:
-				multiplier = 1.0 + (Config.MEM_OVER/100.0)
 				mem_usada = vm.total_memory - vm.free_memory
-				logger.debug(vmid_msg + "The used memory %d is multiplied by %.2f" % (int(mem_usada), multiplier))
-				new_mem =  int(mem_usada * multiplier)
+				# it not free memory use exponential backoff idea
+				if vm.free_memory <= Config.MIN_FREE_MEMORY:
+					logger.debug(vmid_msg + "No free memory in the VM!")
+					if no_free_memory_count > 1:
+						# if this is the third time with no free memory use the original size
+						logger.debug(vmid_msg + "Increase the mem to the original size.")
+						new_mem =  self.original_mem[vm.id]
+						no_free_memory_count = 0
+					else:
+						logger.debug(vmid_msg + "Increase the mem with 50% of the original.")
+						new_mem =  int(mem_usada + (self.original_mem[vm.id] - mem_usada) * 0.5)
+						no_free_memory_count += 1
+				else:
+					multiplier = 1.0 + (Config.MEM_OVER/100.0)
+					logger.debug(vmid_msg + "The used memory %d is multiplied by %.2f" % (int(mem_usada), multiplier))
+					new_mem =  int(mem_usada * multiplier)
 				# We never set more memory that the initial amount
 				if new_mem > self.original_mem[vm.id]:
 					new_mem = self.original_mem[vm.id]
@@ -185,9 +200,6 @@ class Monitor:
 		while True:
 			all_vms = CMP.get_vm_list()
 			monitored_vms = self.get_monitored_vms(all_vms, Config.USER_FILTER)
-			
-			for vm in monitored_vms:
-				self.monitor_vm(vm, all_vms)
 			
 			if monitored_vms:
 				pool.map(lambda vm: self.monitor_vm(vm, all_vms), monitored_vms)
