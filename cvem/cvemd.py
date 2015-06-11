@@ -16,13 +16,13 @@
 #--------------------------------------------------------------------------- #
 
 import time
-import subprocess
 from multiprocessing.pool import ThreadPool
 import cPickle as pickle
 import os
 from cvem.config import Config, logger
 from cpyutils.runcommand import runcommand
 
+# CMP specific imports
 from connectors.one.OpenNebula import OpenNebula as CMP
 
 class Monitor:
@@ -87,15 +87,15 @@ class Monitor:
 		"""
 		logger.debug("Migrating.")
 		
-		vm_id_to_migrate, vm_mem = self.select_vm_to_migrate(vm_id, host_info, all_vms)
-		logger.debug("Migramos la VM %d al host %d" % (vm_id, host_info.id))
-		host_id_to_migrate = self.select_host_to_migrate(vm_mem)
-		if not host_id_to_migrate:
-			logger.warn("There are no host with enough free memory to host the VM " + str(vm_id_to_migrate))
+		vm_to_migrate = self.select_vm_to_migrate(vm_id, host_info, all_vms)
+		host_to_migrate = self.select_host_to_migrate(vm_to_migrate)
+		if not host_to_migrate:
+			logger.warn("There are no host with enough resources to host the VM " + str(vm_to_migrate.id))
 			return False
 	
 		if not Config.ONLY_TEST:
-			return CMP.migrate(vm_id_to_migrate, host_id_to_migrate)
+			logger.debug("Migrate the VM %d to host %d" % (vm_to_migrate.id, host_to_migrate.id))
+			return CMP.migrate(vm_to_migrate.id, host_to_migrate.id)
 		else:
 			logger.debug("No migrate. This is just a test.")
 			return False
@@ -198,6 +198,51 @@ class Monitor:
 			self.save_data()
 			time.sleep(Config.DELAY)
 
+	@staticmethod
+	def power_on_host(free_memory, cpus, delay = 5, timeout = None):
+		"""
+		Try to power on a node connecting with CLUES
+		
+		Args:
+		- free_memory: amount of memory needed in the host.
+		- cpus: number of cpus needed in the host.
+		- delay: number of seconds to sleep when waiting the request to be served (default 5).
+		- timeout: timeout (in secs) to wait the request to be served (default configcli.config_client.CLUES_REQUEST_WAIT_TIMEOUT).
+
+		Return: True if a host has been powered on or False otherwise. 
+		"""
+		try:
+			import configcli
+			if not timeout:
+				timeout = configcli.config_client.CLUES_REQUEST_WAIT_TIMEOUT
+			clues_server = configcli.get_clues_proxy_from_config()
+			success, r_id = clues_server.request_create(configcli.config_client.CLUES_SECRET_TOKEN, cpus, free_memory, 1, "")
+			
+			if not success:
+				logger.error("Error creating a CLUES request: %s" % r_id)
+				return False
+			
+			now = time.time()
+			
+			served = False
+			while not served:
+				success, served = clues_server.request_wait(configcli.config_client.CLUES_SECRET_TOKEN, r_id, 1)
+				
+				if success and served:
+					return True
+				elif ((time.time() - now) > timeout):
+					return False
+				else:
+					time.sleep(delay)
+			
+			return served
+		except ImportError:
+			logger.warn("Error trying to import configcli. It seems that CLUES client library is not installed.")
+			return False
+		except Exception, ex:
+			logger.warn("Error trying to power on a node with CLUES: %s" + str(ex))
+			return False
+
 	# Specific CMP subclasses must implement these methods 
 
 	@staticmethod
@@ -223,19 +268,19 @@ class Monitor:
 		- host_info: HostInfo object of the host where the VM has to go out.
 		- all_vms: List of VirtualMachineInfo objects with all the VMs of the CMP.
 
-		Return: ID of the VM to migrate 
+		Return: VirtualMachineInfo object with the VM to migrate 
 		"""
 		raise Exception("Not implemented")
 	
 	@staticmethod
-	def select_host_to_migrate(free_memory):
+	def select_host_to_migrate(vm_info):
 		"""
 		Get the ID of the HOST to migrate.
 		
 		Args:
-		- free_memory: amount of memory needed in the destination host of the VM to migrate.
+		- vm_info: VirtualMachineInfo object with the VM to migrate
 
-		Return: ID of the Host to migrate 
+		Return: HostInfo of the Host to migrate 
 		"""
 		raise Exception("Not implemented")
 	
@@ -263,8 +308,8 @@ class MonitorONE(Monitor):
 		Function to change the memory of the VM using the virsh command
 		"""
 		vm_name = "one-" + str(vm_id)
-		# This command require the cvemd daemon to be executed with the oneadmin user and have configured the ssh access without password 
-		virsh_cmd = "virsh -c 'qemu+ssh://oneadmin@" + vm_host.name + "/system' setmem " + vm_name + " " + str(new_mem)
+		# This command require the cvemd daemon to have configured the ssh access without password to the user who executes the daemon (usually root) 
+		virsh_cmd = "virsh -c 'qemu+ssh://" + vm_host.name + "/system' setmem " + vm_name + " " + str(new_mem)
 	
 		logger.debug("Change the memory from " + str(vm_id) + " to " + str(new_mem))
 		logger.debug("Executing: " + virsh_cmd)
@@ -294,24 +339,44 @@ class MonitorONE(Monitor):
 			return False
 
 	@staticmethod
-	def select_host_to_migrate(free_memory):
+	def select_host_to_migrate(vm_info):
 		"""
 		Get the ID of the HOST to migrate. It selects the HOST with more free memory.
-		If no node has enough memory to host the VM to migrate, return None.
+		If no node has enough memory or cpus to host the VM to migrate, return None.
 		"""
 		host_list = CMP.get_host_list()
 		
 		hosts_mem = {} 
 		# Select the node with more memory free
 		for host in host_list:
-			hosts_mem[host.id] = host.raw.HOST_SHARE.MAX_MEM - host.raw.HOST_SHARE.MEM_USAGE
+			hosts_mem[host] = host.raw.HOST_SHARE.MAX_MEM - host.raw.HOST_SHARE.MEM_USAGE
 		
 		hosts_mem = sorted(hosts_mem.items(), key=lambda x: x[1], reverse = True)
 		
-		if hosts_mem[0][1] > free_memory:
-			return hosts_mem[0][0]
+		cpus = vm_info.raw.TEMPLATE.CPU
+		if vm_info.total_memory:
+			free_memory = vm_info.total_memory
 		else:
-			return None
+			# If the monitored total memory is not available use the CMP original allocated one 
+			free_memory = vm_info.allocated_memory
+
+		powered = None
+		while powered != False:
+			for host, host_mem in hosts_mem:
+				# ONE FREE_CPU is a Percentage
+				host_free_cpus = host.raw.HOST_SHARE.FREE_CPU/100
+				if host.active and host_mem > free_memory and host_free_cpus > cpus:
+					return host
+			
+			# only try to poweron a host once
+			if powered is None:
+				# Let's try to power on a host
+				powered = Monitor.power_on_host(free_memory, cpus)
+			else:
+				# otherwise continue
+				powered = False
+		
+		return None
 
 	@staticmethod
 	def select_vm_to_migrate(req_vm_id, host_info, all_vms):
@@ -322,15 +387,16 @@ class MonitorONE(Monitor):
 		for vm_id in host_info.raw.VMS.ID:
 			for vm in all_vms:
 				if int(vm_id) == vm.id and req_vm_id != vm.id:
-					vms_mem[vm.id] = vm.total_memory
-					if not vms_mem[vm.id]:
+					if vm.total_memory:
+						vms_mem[vm] = vm.total_memory
+					else:
 						# If the monitored total memory is not available use the CMP original allocated one 
-						vms_mem[vm.id] = vm.allocated_memory
+						vms_mem[vm] = vm.allocated_memory
 		
 		# if we want to get the biggest one set reverse=True
 		vms_mem = sorted(vms_mem.items(), key=lambda x: x[1])
 		
-		return vms_mem[0]
+		return vms_mem[0][0]
 
 if __name__ == "__main__":
 

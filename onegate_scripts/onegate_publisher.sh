@@ -36,7 +36,8 @@ do
 	echo "MEM_TOTAL = $MEM_TOTAL" >> $TMP_DIR/metrics
 	echo "MEM_TOTAL_REAL = $MEM_TOTAL_REAL" >> $TMP_DIR/metrics
 	echo "MEM_FREE = $MEM_FREE" >> $TMP_DIR/metrics
-	 
+	
+	# TODO: do no send the information if the values are the same (or similar) to the last values
 	curl -X "PUT" --header "X-ONEGATE-TOKEN: $ONEGATE_TOKEN" $ONEGATE_URL --data-binary @$TMP_DIR/metrics
 	sleep $DELAY
 done

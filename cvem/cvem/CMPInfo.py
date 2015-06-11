@@ -67,8 +67,8 @@ class CMPInfo:
 
 class VirtualMachineInfo:
 	""" Class to store the VM information """
-	def __init__(self, id = None, host = None, allocated_memory = None, raw = None):
-		self.id =  id
+	def __init__(self, vm_id = None, host = None, allocated_memory = None, raw = None):
+		self.id =  vm_id
 		self.host =  host
 		self.user_id = None
 		""" User ID owner of the VM """
@@ -99,8 +99,9 @@ class VirtualMachineInfo:
 		
 class HostInfo:
 	""" Class to store the Host information """
-	def __init__(self, id = None, name = None, raw = None):
-		self.id =  id
+	def __init__(self, host_id = None, name = None, active = True, raw = None):
+		self.id =  host_id
 		self.name =  name
+		self.active = active
 		self.raw = raw
 		""" Data of the host in the original format of the CMP """

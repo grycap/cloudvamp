@@ -95,8 +95,8 @@ class VNET_POOL(XMLObject):
 	tuples_lists = { 'VNET': VNET }
 
 class HOST_SHARE(XMLObject):
-	values = [ 'MEM_USAGE', 'MAX_MEM', 'FREE_MEM' ]
-	numeric = [ 'MEM_USAGE', 'MAX_MEM', 'FREE_MEM' ]
+	values = [ 'MEM_USAGE', 'MAX_MEM', 'FREE_MEM', 'FREE_CPU', 'MAX_CPU' ]
+	numeric = [ 'MEM_USAGE', 'MAX_MEM', 'FREE_MEM', 'FREE_CPU', 'MAX_CPU' ]
 
 class TEMPLATE_HOST(XMLObject):
 	values = [ 'PACKEDMEMORY' ]
@@ -106,8 +106,17 @@ class VMS(XMLObject):
 	values_lists = { 'ID' }
 
 class HOST(XMLObject):
-	values = [ 'ID', 'LAST_MON_TIME', 'NAME' ]
-	numeric = [ 'ID' ]
+	STATE_INIT=0
+	STATE_MONITORING_MONITORED=1
+	STATE_MONITORED=2
+	STATE_ERROR=3
+	STATE_DISABLED=4
+	STATE_MONITORING_ERROR=5
+	STATE_MONITORING_INIT=6
+	STATE_MONITORING_DISABLED=7
+	INVALID_STATES = [STATE_ERROR, STATE_DISABLED, STATE_MONITORING_ERROR, STATE_MONITORING_DISABLED]
+	values = [ 'ID', 'LAST_MON_TIME', 'NAME', 'STATE' ]
+	numeric = [ 'ID', 'STATE' ]
 	tuples = { 'HOST_SHARE': HOST_SHARE, 'TEMPLATE': TEMPLATE_HOST, 'VMS': VMS}
 	
 class HOST_POOL(XMLObject):
@@ -163,7 +172,7 @@ class OpenNebula(CMPInfo):
 		
 		if success:
 			host_info = HOST(res_info)
-			res_host = HostInfo(int(host_info.ID), host_info.NAME,host_info) 
+			res_host = HostInfo(int(host_info.ID), host_info.NAME, host_info.STATE not in HOST.INVALID_STATES, host_info) 
 			return res_host
 		else:
 			logger.error("Error getting the host info: " + res_info)
@@ -182,7 +191,7 @@ class OpenNebula(CMPInfo):
 		if success:
 			res = []
 			for host in HOST_POOL(res_info).HOST:
-				new_host = HostInfo(host.ID, host.NAME,host)
+				new_host = HostInfo(host.ID, host.NAME, host.STATE not in HOST.INVALID_STATES, host)
 				res.append(new_host)
 			return res
 		else:
