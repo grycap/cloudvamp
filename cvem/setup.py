@@ -15,7 +15,7 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
-from setuptools import setup
+from distutils.core import setup
 import os
 
 # Add special files
