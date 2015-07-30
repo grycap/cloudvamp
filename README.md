@@ -73,11 +73,11 @@ Finally you must copy (or link) `$CVEM_PATH/scripts/cvem` file to `/etc/init.d` 
 
 In case that you want the CVEM service to be started at boot time, you must execute the next set of commands:
 
-On Debian Systems:
+On RedHat Systems:
   ```
     $ chkconfig cvem on
   ```
-On RedHat Systems:
+On Debian Systems:
   ```
     $ update-rc.d cvem start 99 2 3 4 5 . stop 05 0 1 6 .
   ```
@@ -126,7 +126,6 @@ Create a folder for cloudvamp vmm at ONE's vmm folder (usually `/var/lib/one/rem
   ```
     $ mkdir /var/lib/one/remotes/vmm/cloudvamp
     $ cd /var/lib/one/remotes/vmm/cloudvamp
-    $ ln -s ../kvm/* .
   ```
   
 Now copy the new files in the folder
@@ -134,24 +133,34 @@ Now copy the new files in the folder
   ```
     $ cp /tmp/cloudvamp/opennebula/vmm/cloudvamp/* /var/lib/one/remotes/vmm/cloudvamp/
   ```
+  
+Finally link the other file in the folder (please ignore the messages that state that the files already exist):
+  ```
+    $ ln -s ../kvm/* /var/lib/one/remotes/vmm/cloudvamp/
+  ```
 
 Create a folder for cloudvamp im probes files at ONE's im folder (usually `/var/lib/one/remotes/im`) and create links to the files in kvm folder:
   
   ```
     $ mkdir /var/lib/one/remotes/im/cloudvamp-probes.d
-    $ cd /var/lib/one/remotes/im/cloudvamp-probes.d
-    $ ln -s ../kvm-probes.d/* .
-    $ rm kvm.rb
-    $ chmod 644 poll.sh
   ```
-  
-* NOTE: take into account that file "poll.sh" must not have permission for execution (i.e. its permission mask is 0644). The file is left for completion purposes, but it is not used to avoid an unnecesary delay as its results are included in file cloudvamp.rb
   
 Now copy the new files in the folder
   
   ```
     $ cp /tmp/cloudvamp/opennebula/im/cloudvamp-probes.d/* /var/lib/one/remotes/im/cloudvamp-probes.d/
   ```
+
+Link the files to the kvm probes and set the values for the cloudvamp probes
+
+  ```
+    $ ln -s /var/lib/one/remotes/im/kvm-probes.d/* /var/lib/one/remotes/im/cloudvamp-probes.d/
+    $ cd /var/lib/one/remotes/im/cloudvamp-probes.d
+    $ rm kvm.rb
+    $ chmod 644 poll.sh
+  ```
+  
+* NOTE: take into account that file "poll.sh" must not have permission for execution (i.e. its permission mask is 0644). The file is left for completion purposes, but it is not used to avoid an unnecesary delay as its results are included in file cloudvamp.rb
   
 And create a folder for the cloudvamp im as a link to the kvm one:
   
