@@ -117,9 +117,9 @@ Then all the templates of the VMs must be configured to activate the OpenNebula 
 
 #### Creating the IM and the VMM
 
-The MOG, installed in the OpenNebula front-end node, consists of two parts: an Infrastructure Manager (IM) and a Virtual Machine Manager (VMM), which are concepts from OpenNebula. The code has been tested in Ubuntu, with a ONE 4.8 installation from the official OpenNebula repositories.
+The MOG, installed in the OpenNebula front-end node, consists of two parts: an Information Manager (IM) and a Virtual Machine Manager (VMM), which are concepts from OpenNebula. The code has been tested in Ubuntu, with a ONE 4.8 installation from the official OpenNebula repositories.
 
-Create a folder for the CloudVAMP VMM at ONE's vmm folder (usually `/var/lib/one/remotes/vmm`) and create links to the files in kvm folder:
+Create a folder for the CloudVAMP VMM at ONE's vmm folder (usually `/var/lib/one/remotes/vmm`) and create links to the files in the kvm folder:
 
   ```
     $ mkdir /var/lib/one/remotes/vmm/cloudvamp
