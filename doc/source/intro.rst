@@ -22,5 +22,3 @@ What are the technical details?
 If an excess of free memory for a VM is detected, CloudVAMP changes the amount of memory allocated to the VM via the underlying hypervisor (i.e. KVM) so that it fits the used memory (plus an additional margin of memory), thus considering the running applications. The host that is hosting the VM will then have an extra amount of "stolen memory" that can be used for the deployment of additional VMs on that host. Therefore, CloudVAMP introduces the ability of oversubscription for an on-premises Cloud.
 
 CloudVAMP also prevents overloading, i.e. when the sum of memory allocated to the VMs within a host is greater than the physical amount of memory available for the host. For this, if additional memory is reclaimed by a VM, CloudVAMP uses live migration of VMs across hosts in order to safely prevent overloading without VM downtime.
-
-
