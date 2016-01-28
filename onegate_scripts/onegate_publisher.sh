@@ -17,7 +17,8 @@
  
 ONEGATE_URL=$1
 ONEGATE_TOKEN=$2
-DELAY=$3
+VMID=$3
+DELAY=$4
 
 TMP_DIR=`mktemp -d`
  
@@ -38,6 +39,6 @@ do
 	echo "MEM_FREE = $MEM_FREE" >> $TMP_DIR/metrics
 	
 	# TODO: do no send the information if the values are the same (or similar) to the last values
-	curl -X "PUT" --header "X-ONEGATE-TOKEN: $ONEGATE_TOKEN" $ONEGATE_URL --data-binary @$TMP_DIR/metrics
+	curl -X "PUT" --header "X-ONEGATE-TOKEN: $ONEGATE_TOKEN" --header "X_ONEGATE_VMID: $VMID" $ONEGATE_URL --data-binary @$TMP_DIR/metrics
 	sleep $DELAY
 done
