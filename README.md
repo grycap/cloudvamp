@@ -102,7 +102,7 @@ The memory reporter relies on the OpenNebula contextualization scripts. Therefor
 
 It uses the OneGate system to publish and get the monitored information so OneGate must be installed and configured, as indicated in the [OpenNebula's OneGate Documentation](http://archives.opennebula.org/documentation:rel4.4:onegate_usage).
 
-The first step is to upload the contextualization scripts located in `/tmp/cloudvamp/onegate_scripts/` (`onegate_init.sh`, `onegate_publisher.sh`) to the OpenNebula "Files & Kernels" section.
+The first step is to upload the contextualization scripts (`onegate_init.sh`, `onegate_publisher.sh`) to the OpenNebula "Files & Kernels" section. If you are using OpenNebula versions 4.8 or newer the files are located in `/tmp/cloudvamp/onegate_scripts/` however if you are using versions 4.6 or older the files are located in `/tmp/cloudvamp/onegate_scripts/old`   
 
 Then all the templates of the VMs must be configured to activate the OpenNebula contextualization Token, include both files, and set `onegate_init.sh` as an init script:
 
