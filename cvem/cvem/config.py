@@ -65,8 +65,14 @@ class Config:
 	ONLY_TEST = True
 	# Minimum amount of free memory to activate the exponential backoff.
 	MIN_FREE_MEMORY = 20000
-	
-logging.config.fileConfig(Config.CVEM_PATH + '/logging.conf')
+
+try:
+	# First try locally
+	logging.config.fileConfig(Config.CVEM_PATH + '/logging.conf')
+except:
+	# then try in the /etc/cvem directory
+	logging.config.fileConfig('/etc/cvem//logging.conf')
+
 logger = logging.getLogger('monitor')
 
 config = ConfigParser.ConfigParser()

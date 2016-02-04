@@ -26,8 +26,9 @@ datafiles = []
 datafiles.append(('/etc/init.d', ['scripts/cvem']))
 datafiles.append(('/etc/cvem', ['etc/cvem.cfg']))
 datafiles.append(('/etc/cvem', ['etc/one.cfg']))
+datafiles.append(('/etc/cvem', ['logging.conf']))
 
-setup(name="CVEM", version="0.2.0",
+setup(name="CVEM", version="0.2.1",
 	author='GRyCAP - Universitat Politecnica de Valencia',
 	author_email='micafer1@upv.es',
 	url='https://github.com/grycap/cloudvamp',

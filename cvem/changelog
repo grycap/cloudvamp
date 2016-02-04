@@ -5,3 +5,7 @@ CVEM 0.10
 CVEM 0.20
 
     * Add CLUES support
+
+CVEM 0.21
+
+    * Bugfix of not finding logging.conf file
