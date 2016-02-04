@@ -9,3 +9,4 @@ CVEM 0.20
 CVEM 0.21
 
     * Bugfix of not finding logging.conf file
+    * Enable to specify MEM_FREE_MIN and MEM_OVER per VM

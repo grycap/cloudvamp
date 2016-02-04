@@ -118,7 +118,11 @@ class Monitor:
 		logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
 		logger.info(vmid_msg + "Free Memory: %d" % vm.free_memory)
 		
-		if vm_pct_free_memory < (Config.MEM_OVER - Config.MEM_MARGIN) or vm_pct_free_memory > (Config.MEM_OVER + Config.MEM_MARGIN):
+		mem_over_ratio = Config.MEM_OVER
+		if vm.mem_over_ratio:
+			mem_over_ratio = vm.mem_over_ratio
+		
+		if vm_pct_free_memory < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory > (mem_over_ratio + Config.MEM_MARGIN):
 			now = time.time()
 	
 			logger.debug(vmid_msg + "VM %s has %.2f of free memory, change the memory size" % (vm.id, vm_pct_free_memory))
@@ -133,8 +137,12 @@ class Monitor:
 				logger.debug(vmid_msg + "It is in cooldown period. No changing the memory.")
 			else:
 				mem_usada = vm.total_memory - vm.free_memory
+				min_free_memory = Config.MIN_FREE_MEMORY
+				# check if the VM has defined a specific MIN_FREE_MEMORY value
+				if vm.min_free_mem:
+					min_free_memory = vm.min_free_mem
 				# it not free memory use exponential backoff idea
-				if vm.free_memory <= Config.MIN_FREE_MEMORY:
+				if vm.free_memory <= min_free_memory:
 					logger.debug(vmid_msg + "No free memory in the VM!")
 					if no_free_memory_count > 1:
 						# if this is the third time with no free memory use the original size
@@ -146,7 +154,7 @@ class Monitor:
 						new_mem =  int(mem_usada + (self.original_mem[vm.id] - mem_usada) * 0.5)
 						no_free_memory_count += 1
 				else:
-					multiplier = 1.0 + (Config.MEM_OVER/100.0)
+					multiplier = 1.0 + (mem_over_ratio/100.0)
 					logger.debug(vmid_msg + "The used memory %d is multiplied by %.2f" % (int(mem_usada), multiplier))
 					new_mem =  int(mem_usada * multiplier)
 				# We never set more memory that the initial amount

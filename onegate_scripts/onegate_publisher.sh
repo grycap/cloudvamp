@@ -31,6 +31,11 @@ do
 	MEM_TOTAL_REAL=$((MEM_TOTAL_4k+MEM_TOTAL_2M))
 	
 	MEM_FREE=`grep MemFree: /proc/meminfo | awk '{print $2}'`
+	MEM_BUFFERED=`grep Buffers: /proc/meminfo | awk '{print $2}'`
+	MEM_CACHED=`grep Cached: /proc/meminfo | grep -v Swap | awk '{print $2}'`
+	
+	# Add the cache and buffers to free memory
+	MEM_FREE=`expr $MEM_FREE + $MEM_BUFFERED + $MEM_CACHED`
 	
 	MEM_TOTAL=`grep MemTotal: /proc/meminfo | awk '{print $2}'`
 	 

@@ -47,8 +47,8 @@ class HISTORY_RECORDS(XMLObject):
 	tuples_lists = { 'HISTORY': HISTORY }
 
 class USER_TEMPLATE(XMLObject):
-		values = [ 'MEM_FREE', 'MEM_TOTAL', 'MEM_TOTAL_REAL']
-		numeric = [ 'MEM_FREE', 'MEM_TOTAL', 'MEM_TOTAL_REAL']
+		values = [ 'MEM_FREE', 'MEM_TOTAL', 'MEM_TOTAL_REAL', 'MIN_FREE_MEM', 'MEM_OVER']
+		numeric = [ 'MEM_FREE', 'MEM_TOTAL', 'MEM_TOTAL_REAL', 'MIN_FREE_MEM', 'MEM_OVER']
 
 class VM(XMLObject):
 		STATE_INIT=0
@@ -152,6 +152,10 @@ class OpenNebula(CMPInfo):
 					new_vm.set_memory_values(int(vm.USER_TEMPLATE.MEM_TOTAL_REAL),
 										int(vm.USER_TEMPLATE.MEM_TOTAL),
 										int(vm.USER_TEMPLATE.MEM_FREE))
+				if vm.USER_TEMPLATE.MIN_FREE_MEM:
+					new_vm.min_free_mem = vm.USER_TEMPLATE.MIN_FREE_MEM
+				if vm.USER_TEMPLATE.MEM_OVER:
+					new_vm.mem_over_ratio = vm.USER_TEMPLATE.MEM_OVER
 
 				res.append(new_vm)
 				
