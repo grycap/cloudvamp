@@ -158,7 +158,7 @@ class OpenNebula(CMPInfo):
 					new_vm.mem_over_ratio = vm.USER_TEMPLATE.MEM_OVER
 				
 				# publish MEM properties to the VM user template to show the values to the user 
-				OpenNebula._publish_mem_info(new_vm)
+				OpenNebula._publish_mem_info(vm)
 
 				res.append(new_vm)
 				
@@ -190,12 +190,12 @@ class OpenNebula(CMPInfo):
 		server_url = "http://%s:%d/RPC2" % (ConfigONE.ONE_SERVER, ConfigONE.ONE_PORT)
 		try:
 			server = ServerProxy(server_url,allow_none=True,timeout=10)
-			(success, res_info, _) = server.one.vm.update(ConfigONE.ONE_ID, vm.id, template, 1)
+			(success, res_info, _) = server.one.vm.update(ConfigONE.ONE_ID, vm.UID, template, 1)
 			if not success:
-				logger.error("Error updating the template to show the mem info to the VM ID: %s. %s." % (vm.id, res_info))
+				logger.error("Error updating the template to show the mem info to the VM ID: %s. %s." % (vm.UID, res_info))
 			return success
 		except:
-			logger.exception("Error updating the template to show the mem info to the VM ID: %s." % vm.id)
+			logger.exception("Error updating the template to show the mem info to the VM ID: %s." % vm.UID)
 			return False
 		
 		return True
