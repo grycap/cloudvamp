@@ -16,7 +16,7 @@
 
 from cpyutils.xmlobject import XMLObject
 from cpyutils.timeoutxmlrpccli import ServerProxy
-from cvem.config import logger
+from cvem.config import logger, Config
 from cvem.CMPInfo import VirtualMachineInfo, HostInfo, CMPInfo
 from config_one import ConfigONE
 
@@ -156,6 +156,9 @@ class OpenNebula(CMPInfo):
 					new_vm.min_free_mem = vm.USER_TEMPLATE.MIN_FREE_MEM
 				if vm.USER_TEMPLATE.MEM_OVER:
 					new_vm.mem_over_ratio = vm.USER_TEMPLATE.MEM_OVER
+				
+				# publish MEM properties to the VM user template to show the values to the user 
+				OpenNebula._publish_mem_info(new_vm)
 
 				res.append(new_vm)
 				
@@ -163,6 +166,39 @@ class OpenNebula(CMPInfo):
 		else:
 			logger.error("Error getting the VM list: " + res_info)
 			return []
+
+	@staticmethod
+	def _publish_mem_info(vm):
+		"""
+		Publish MIN_FREE_MEM and MEM_OVER properties to the VM user template to show the values to the user
+		
+		Args:
+		- vm: VirtualMachineInfo with the VM info.
+
+		Return: True if the information is published successfully or False otherwise 
+		"""
+		template = ""
+		if not vm.USER_TEMPLATE.MIN_FREE_MEM:
+			template += "MIN_FREE_MEM = %d\n" % Config.MIN_FREE_MEM
+		if not vm.USER_TEMPLATE.MEM_OVER:
+			template += "MEM_OVER = %.2f\n" % Config.MEM_OVER
+		
+		# if there is nothing to update return True
+		if not template:
+			return True 
+		
+		server_url = "http://%s:%d/RPC2" % (ConfigONE.ONE_SERVER, ConfigONE.ONE_PORT)
+		try:
+			server = ServerProxy(server_url,allow_none=True,timeout=10)
+			(success, res_info, _) = server.one.vm.update(ConfigONE.ONE_ID, vm.id, template, 1)
+			if not success:
+				logger.error("Error updating the template to show the mem info to the VM ID: %s. %s." % (vm.id, res_info))
+			return success
+		except:
+			logger.exception("Error updating the template to show the mem info to the VM ID: %s." % vm.id)
+			return False
+		
+		return True
 	
 	@staticmethod
 	def get_host_info(host_id):
