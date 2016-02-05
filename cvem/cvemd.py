@@ -349,7 +349,7 @@ class MonitorONE(Monitor):
 		Check if a node has enough free memory available
 		"""
 		if host_info:
-			host_free_memory = host_info.raw.HOST_SHARE.MAX_MEM - host_info.raw.HOST_SHARE.MEM_USAGE
+			host_free_memory = host_info.raw.HOST_SHARE.FREE_MEM
 			logger.debug("The host %s has %d KB of free memory." % (host_info.name, host_free_memory))
 			if host_free_memory - free_memory > Config.HOST_MEM_MARGIN:
 				return True
@@ -369,7 +369,7 @@ class MonitorONE(Monitor):
 		hosts_mem = {} 
 		# Select the node with more memory free
 		for host in host_list:
-			hosts_mem[host] = host.raw.HOST_SHARE.MAX_MEM - host.raw.HOST_SHARE.MEM_USAGE
+			hosts_mem[host] = host.raw.HOST_SHARE.FREE_MEM
 		
 		hosts_mem = sorted(hosts_mem.items(), key=lambda x: x[1], reverse = True)
 		
