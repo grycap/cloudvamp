@@ -71,7 +71,7 @@ try:
 	logging.config.fileConfig(Config.CVEM_PATH + '/logging.conf')
 except:
 	# then try in the /etc/cvem directory
-	logging.config.fileConfig('/etc/cvem//logging.conf')
+	logging.config.fileConfig('/etc/cvem/logging.conf')
 
 logger = logging.getLogger('monitor')
 
