@@ -76,7 +76,7 @@ class Monitor:
 
 	@staticmethod
 	def get_host_info(host_id):
-		if host_id:
+		if host_id is not None:
 			return CMP.get_host_info(host_id)
 		else:
 			logger.error("Trying to get host info from a VM without host.id") 
