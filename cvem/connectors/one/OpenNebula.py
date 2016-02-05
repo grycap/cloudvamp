@@ -140,7 +140,7 @@ class OpenNebula(CMPInfo):
 		except:
 			logger.exception("Error getting the VM list")
 			return []
-	
+
 		if success:
 			res_vm = VM_POOL(res_info)
 			res = []
@@ -152,13 +152,13 @@ class OpenNebula(CMPInfo):
 					new_vm.set_memory_values(int(vm.USER_TEMPLATE.MEM_TOTAL_REAL),
 										int(vm.USER_TEMPLATE.MEM_TOTAL),
 										int(vm.USER_TEMPLATE.MEM_FREE))
-				if vm.USER_TEMPLATE.MIN_FREE_MEM:
-					new_vm.min_free_mem = vm.USER_TEMPLATE.MIN_FREE_MEM
-				if vm.USER_TEMPLATE.MEM_OVER:
-					new_vm.mem_over_ratio = vm.USER_TEMPLATE.MEM_OVER
+					if vm.USER_TEMPLATE.MIN_FREE_MEM:
+						new_vm.min_free_mem = vm.USER_TEMPLATE.MIN_FREE_MEM
+					if vm.USER_TEMPLATE.MEM_OVER:
+						new_vm.mem_over_ratio = vm.USER_TEMPLATE.MEM_OVER
 				
-				# publish MEM properties to the VM user template to show the values to the user 
-				OpenNebula._publish_mem_info(new_vm)
+					# publish MEM properties to the VM user template to show the values to the user 
+					OpenNebula._publish_mem_info(new_vm)
 
 				res.append(new_vm)
 				
