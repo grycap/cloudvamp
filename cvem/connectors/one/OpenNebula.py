@@ -179,7 +179,7 @@ class OpenNebula(CMPInfo):
 		"""
 		template = ""
 		if not vm.USER_TEMPLATE.MIN_FREE_MEM:
-			template += "MIN_FREE_MEM = %d\n" % Config.MIN_FREE_MEM
+			template += "MIN_FREE_MEM = %d\n" % Config.MIN_FREE_MEMORY
 		if not vm.USER_TEMPLATE.MEM_OVER:
 			template += "MEM_OVER = %.2f\n" % Config.MEM_OVER
 		
