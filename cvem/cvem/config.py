@@ -65,6 +65,11 @@ class Config:
 	ONLY_TEST = True
 	# Minimum amount of free memory to activate the exponential backoff.
 	MIN_FREE_MEMORY = 20000
+	# Command to change the memory of a VM, parameters:
+	#  {hostname}: hostname where the VM is allocated
+	#  {vmid}: ID of the VM
+	#  {newmemory}: Amount of memory to assign to the VM
+	CHANGE_MEMORY_CMD = "virsh -c 'qemu+ssh://{hostname}/system' setmem one-{vmid} {newmemory}"
 
 try:
 	# First try locally

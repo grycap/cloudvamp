@@ -320,33 +320,24 @@ class Monitor:
 
 		Return: ID of the Host to migrate 
 		"""
-		raise Exception("Not implemented")
-
-class MonitorONE(Monitor):
-	"""
-	Monitor for OpenNebula
-	"""
-	@staticmethod
-	def change_memory(vm_id, vm_host, new_mem):
-		"""
-		Function to change the memory of the VM using the virsh command
-		"""
-		vm_name = "one-" + str(vm_id)
-		# This command require the cvemd daemon to have configured the ssh access without password to the user who executes the daemon (usually root) 
-		virsh_cmd = "virsh -c 'qemu+ssh://" + vm_host.name + "/system' setmem " + vm_name + " " + str(new_mem)
+		chmem_cmd = Config.CHANGE_MEMORY_CMD.format(hostname = vm_host.name, vmid = str(vm_id), newmemory = str(new_mem))
 	
 		logger.debug("Change the memory from " + str(vm_id) + " to " + str(new_mem))
-		logger.debug("Executing: " + virsh_cmd)
+		logger.debug("Executing: " + chmem_cmd)
 		if not Config.ONLY_TEST:
-			success, out = runcommand(virsh_cmd, shell=True)
+			success, out = runcommand(chmem_cmd, shell=True)
 
 			if success:
-				logger.debug("virsh output: " + out)
+				logger.debug("chmem command output: " + out)
 			else:
 				logger.error("Error changing memory: " + out)
 		else:
 			logger.debug("Not executed. This is just a test.")
 
+class MonitorONE(Monitor):
+	"""
+	Monitor for OpenNebula
+	"""
 	@staticmethod
 	def host_has_memory_free(host_info,free_memory):
 		"""
