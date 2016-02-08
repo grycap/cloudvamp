@@ -40,6 +40,8 @@ class Monitor:
 		assigned to each VM and the memory provided by the VM monitor """
 		self.last_migration = {}
 		""" Dict to store the timestamp of the last migration operation made in each host """
+		self.no_free_memory_count = {}
+		""" Dict to store the the number of consecutive occurrences of not having free memory in each VM """
 		
 		self.load_data()
 	
@@ -103,8 +105,7 @@ class Monitor:
 	def monitor_vm(self, vm, all_vms):
 		"""
 		Main function of the monitor
-		"""
-		no_free_memory_count = 0 
+		""" 
 		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
 		if vm.id not in self.mem_diff:
 			self.mem_diff[vm.id] = vm.real_memory - vm.total_memory
@@ -144,15 +145,18 @@ class Monitor:
 				# it not free memory use exponential backoff idea
 				if vm.free_memory <= min_free_memory:
 					logger.debug(vmid_msg + "No free memory in the VM!")
-					if no_free_memory_count > 1:
+					if vm.id in self.no_free_memory_count and self.no_free_memory_count[vm.id] > 1:
 						# if this is the third time with no free memory use the original size
 						logger.debug(vmid_msg + "Increase the mem to the original size.")
 						new_mem =  self.original_mem[vm.id]
-						no_free_memory_count = 0
+						del self.no_free_memory_count[vm.id]
 					else:
 						logger.debug(vmid_msg + "Increase the mem with 50% of the original.")
 						new_mem =  int(mem_usada + (self.original_mem[vm.id] - mem_usada) * 0.5)
-						no_free_memory_count += 1
+						if vm.id in self.no_free_memory_count:
+							self.no_free_memory_count[vm.id] += 1
+						else:
+							self.no_free_memory_count[vm.id] = 1
 				else:
 					multiplier = 1.0 + (mem_over_ratio/100.0)
 					logger.debug(vmid_msg + "The used memory %d is multiplied by %.2f" % (int(mem_usada), multiplier))
@@ -341,7 +345,7 @@ class MonitorONE(Monitor):
 			else:
 				logger.error("Error changing memory: " + out)
 		else:
-			out = "Not executed. This is just a test."
+			logger.debug("Not executed. This is just a test.")
 
 	@staticmethod
 	def host_has_memory_free(host_info,free_memory):
