@@ -18,6 +18,7 @@ from cpyutils.xmlobject import XMLObject
 from cpyutils.timeoutxmlrpccli import ServerProxy
 from cvem.config import logger, Config
 from cvem.CMPInfo import VirtualMachineInfo, HostInfo, CMPInfo
+from cvem.Monitor import Monitor
 from config_one import ConfigONE
 
 # classes to parse the results of the ONE API using xmlobject
@@ -133,9 +134,10 @@ class OpenNebula(CMPInfo):
 		server_url = "http://%s:%d/RPC2" % (ConfigONE.ONE_SERVER, ConfigONE.ONE_PORT)
 		try:
 			server = ServerProxy(server_url,allow_none=True,timeout=10)
-			vm_filter = -3
+			# To get only ONE_ID user's resources
+			#vm_filter = -3
 			# To get all
-			#vm_filter = -2
+			vm_filter = -2
 			(success, res_info, _) = server.one.vmpool.info(ConfigONE.ONE_ID, vm_filter, -1, -1, 3)
 		except:
 			logger.exception("Error getting the VM list")
@@ -253,3 +255,85 @@ class OpenNebula(CMPInfo):
 		else:
 			logger.error("Error migrating the VM %d to the host %d: %s" % (vm_id, host_id, res_info))
 			return False
+
+class MonitorONE(Monitor):
+	"""
+	Monitor for OpenNebula
+	"""
+	
+	def __init__(self, cmpo = None):
+		Monitor.__init__(self, OpenNebula())
+	
+	@staticmethod
+	def host_has_memory_free(host_info,free_memory):
+		"""
+		Check if a node has enough free memory available
+		"""
+		if host_info:
+			host_free_memory = host_info.raw.HOST_SHARE.FREE_MEM
+			logger.debug("The host %s has %d KB of free memory." % (host_info.name, host_free_memory))
+			if host_free_memory - free_memory > Config.HOST_MEM_MARGIN:
+				return True
+			else:
+				return False
+		else:
+			return False
+
+	def select_host_to_migrate(self, vm_info):
+		"""
+		Get the ID of the HOST to migrate. It selects the HOST with more free memory.
+		If no node has enough memory or cpus to host the VM to migrate, return None.
+		"""
+		host_list = self.cmp.get_host_list()
+		
+		hosts_mem = {} 
+		# Select the node with more memory free
+		for host in host_list:
+			hosts_mem[host] = host.raw.HOST_SHARE.FREE_MEM
+		
+		hosts_mem = sorted(hosts_mem.items(), key=lambda x: x[1], reverse = True)
+		
+		cpus = vm_info.raw.TEMPLATE.CPU
+		if vm_info.total_memory:
+			free_memory = vm_info.total_memory
+		else:
+			# If the monitored total memory is not available use the CMP original allocated one 
+			free_memory = vm_info.allocated_memory
+
+		powered = None
+		while powered != False:
+			for host, host_mem in hosts_mem:
+				# ONE FREE_CPU is a Percentage
+				host_free_cpus = host.raw.HOST_SHARE.FREE_CPU/100
+				if host.active and host_mem > free_memory and host_free_cpus > cpus:
+					return host
+			
+			# only try to poweron a host once
+			if powered is None:
+				# Let's try to power on a host
+				powered = Monitor.power_on_host(free_memory, cpus)
+			else:
+				# otherwise continue
+				powered = False
+		
+		return None
+
+	@staticmethod
+	def select_vm_to_migrate(req_vm_id, host_info, all_vms):
+		"""
+		Get the ID of the VM to migrate. It selects the VM with less memory avoiding to migrate VM with ID "req_vm_id"
+		"""
+		vms_mem = {} 
+		for vm_id in host_info.raw.VMS.ID:
+			for vm in all_vms:
+				if int(vm_id) == vm.id and req_vm_id != vm.id:
+					if vm.total_memory:
+						vms_mem[vm] = vm.total_memory
+					else:
+						# If the monitored total memory is not available use the CMP original allocated one 
+						vms_mem[vm] = vm.allocated_memory
+		
+		# if we want to get the biggest one set reverse=True
+		vms_mem = sorted(vms_mem.items(), key=lambda x: x[1])
+		
+		return vms_mem[0][0]

@@ -70,6 +70,8 @@ class Config:
 	#  {vmid}: ID of the VM
 	#  {newmemory}: Amount of memory to assign to the VM
 	CHANGE_MEMORY_CMD = "virsh -c 'qemu+ssh://{hostname}/system' setmem one-{vmid} {newmemory}"
+	# Class child of cvem Monitor to be executed
+	MONITOR_CLASS = 'connectors.one.OpenNebula.MonitorONE'
 
 try:
 	# First try locally
