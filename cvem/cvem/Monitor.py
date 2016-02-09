@@ -103,31 +103,32 @@ class Monitor:
 		"""
 		Main function of the monitor
 		""" 
-		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
+		mem_over_ratio = Config.MEM_OVER
+		if vm.mem_over_ratio:
+			mem_over_ratio = vm.mem_over_ratio		
+		
 		if vm.id not in self.mem_diff:
 			self.mem_diff[vm.id] = vm.real_memory - vm.total_memory
 		
-		vm.total_memory += self.mem_diff[vm.id]
+		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
+		vm_pct_free_memory_inc_over_ratio = vm_pct_free_memory * (1 + mem_over_ratio / 100.0);
 		
 		vmid_msg = "VMID " + str(vm.id) + ": "
 		vm.host = self.get_host_info(vm.host.id)
 		#logger.debug(vmid_msg + "VM is in Host: " + vm.host.name + ". PACKEDMEMORY = " + str(vm.host.raw.TEMPLATE.PACKEDMEMORY))
 		
+		logger.info(vmid_msg + "Real Memory: " + str(vm.real_memory))
 		logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
 		logger.info(vmid_msg + "Free Memory: %d" % vm.free_memory)
 		
-		mem_over_ratio = Config.MEM_OVER
-		if vm.mem_over_ratio:
-			mem_over_ratio = vm.mem_over_ratio
-		
-		if vm_pct_free_memory < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory > (mem_over_ratio + Config.MEM_MARGIN):
+		if vm_pct_free_memory_inc_over_ratio < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory_inc_over_ratio > (mem_over_ratio + Config.MEM_MARGIN):
 			now = time.time()
 	
 			logger.debug(vmid_msg + "VM %s has %.2f of free memory, change the memory size" % (vm.id, vm_pct_free_memory))
 			if vm.id in self.last_set_mem:
 				logger.debug(vmid_msg + "Last memory change was %s secs ago." % (now - self.last_set_mem[vm.id]))
 			else:
-				self.original_mem[vm.id] = vm.total_memory
+				self.original_mem[vm.id] = vm.allocated_memory
 				logger.debug(vmid_msg + "The memory of this VM has been never modified. Store the initial memory  : " + str(self.original_mem[vm.id]))
 				self.last_set_mem[vm.id] = now
 	
@@ -158,11 +159,18 @@ class Monitor:
 					multiplier = 1.0 + (mem_over_ratio/100.0)
 					logger.debug(vmid_msg + "The used memory %d is multiplied by %.2f" % (int(mem_usada), multiplier))
 					new_mem =  int(mem_usada * multiplier)
+				
+				# Check for minimum memory
+				if new_mem < Config.MEM_MIN:
+					new_mem = Config.MEM_MIN
+					
+				# add diff to new_mem value
+				new_mem += self.mem_diff[vm.id]
+				
 				# We never set more memory that the initial amount
 				if new_mem > self.original_mem[vm.id]:
 					new_mem = self.original_mem[vm.id]
-				elif new_mem < Config.MEM_MIN:
-					new_mem = Config.MEM_MIN
+
 				if abs(int(vm.total_memory)-new_mem) < Config.MEM_DIFF_TO_CHANGE:
 					logger.debug(vmid_msg + "Not changing the memory. Too small difference.")
 				else:
@@ -319,7 +327,7 @@ class Monitor:
 		"""
 		chmem_cmd = Config.CHANGE_MEMORY_CMD.format(hostname = vm_host.name, vmid = str(vm_id), newmemory = str(new_mem))
 	
-		logger.debug("Change the memory from " + str(vm_id) + " to " + str(new_mem))
+		logger.debug("Change the memory of VM: " + str(vm_id) + " to " + str(new_mem))
 		logger.debug("Executing: " + chmem_cmd)
 		if not Config.ONLY_TEST:
 			success, out = runcommand(chmem_cmd, shell=True)

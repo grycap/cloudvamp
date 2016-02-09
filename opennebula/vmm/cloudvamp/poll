@@ -82,6 +82,7 @@ module KVM
         values[:state]      = get_state(dominfo['State'])
         values[:usedcpu]    = cpu[vm[:pid]] if cpu[vm[:pid]]
         values[:usedmemory] = [resident_mem, used_mem].max
+        values[:realmemory] = used_mem
         values[:maxmemory] = [resident_mem, max_mem].max
         values[:packedmemory] = values[:maxmemory] - values[:usedmemory]
 
@@ -141,6 +142,7 @@ module KVM
             values[:state]      = get_state(dominfo['State'])
             values[:usedcpu]    = cpu[vm[:pid]] if cpu[vm[:pid]]
             values[:usedmemory] = [resident_mem, used_mem].max
+            values[:realmemory] = used_mem
             values[:maxmemory] = [resident_mem, max_mem].max
             values[:packedmemory] = values[:maxmemory] - values[:usedmemory]
 

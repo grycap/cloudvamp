@@ -35,7 +35,7 @@ class DISK(XMLObject):
 		values = ['CLONE','READONLY','SAVE','SOURCE','TARGET' ]
 
 class TEMPLATE(XMLObject):
-		values = [ 'CPU', 'MEMORY', 'NAME', 'RANK', 'REQUIREMENTS', 'VMID', 'VCPU', 'PACKEDMEMORY', 'MAXMEMORY' ]
+		values = [ 'CPU', 'MEMORY', 'NAME', 'RANK', 'REQUIREMENTS', 'VMID', 'VCPU' ]
 		tuples = { 'GRAPHICS': GRAPHICS, 'OS': OS }
 		tuples_lists = { 'DISK': DISK, 'NIC': NIC }
 		numeric = [ 'CPU', 'MEMORY', 'VCPU' ]
@@ -62,7 +62,7 @@ class VM(XMLObject):
 		STATE_FAILED=7
 		STATE_STR = {'0': 'init', '1': 'pending', '2': 'hold', '3': 'active', '4': 'stopped', '5': 'suspended', '6': 'done', '7': 'failed' }
 		LCM_STATE_STR={'0':'init','1':'prologing','2':'booting','3':'running','4':'migrating','5':'saving (stop)','6':'saving (suspend)','7':'saving (migrate)', '8':'prologing (migration)', '9':'prologing (resume)', '10': 'epilog (stop)','11':'epilog', '12':'cancel','13':'failure','14':'delete','15':'unknown'}
-		values = [ 'ID','UID','NAME','LAST_POLL','STATE','LCM_STATE','DEPLOY_ID','MEMORY','CPU','NET_TX','NET_RX', 'STIME','ETIME' ]
+		values = [ 'ID','UID','NAME','LAST_POLL','STATE','LCM_STATE','DEPLOY_ID','MEMORY','CPU','NET_TX','NET_RX', 'STIME','ETIME', 'PACKEDMEMORY', 'MAXMEMORY', 'REALMEMORY' ]
 		tuples = { 'TEMPLATE': TEMPLATE, 'HISTORY_RECORDS': HISTORY_RECORDS, 'USER_TEMPLATE': USER_TEMPLATE }
 		numeric = [ 'ID', 'UID', 'STATE', 'LCM_STATE', 'STIME','ETIME' ]
 
@@ -148,10 +148,10 @@ class OpenNebula(CMPInfo):
 			res = []
 			for vm in res_vm.VM:
 				host = HostInfo(int(vm.HISTORY_RECORDS.HISTORY[0].HID), vm.HISTORY_RECORDS.HISTORY[0].HOSTNAME)
-				new_vm = VirtualMachineInfo(int(vm.ID), host, vm.TEMPLATE.MEMORY * 1024, vm)
+				new_vm = VirtualMachineInfo(int(vm.ID), host, vm.MAXMEMORY, vm)
 				new_vm.user_id = vm.UID
 				if vm.USER_TEMPLATE.MEM_TOTAL:
-					new_vm.set_memory_values(int(vm.USER_TEMPLATE.MEM_TOTAL_REAL),
+					new_vm.set_memory_values(int(vm.REALMEMORY),
 										int(vm.USER_TEMPLATE.MEM_TOTAL),
 										int(vm.USER_TEMPLATE.MEM_FREE))
 					if vm.USER_TEMPLATE.MIN_FREE_MEM:
