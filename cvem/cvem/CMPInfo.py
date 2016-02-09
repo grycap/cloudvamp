@@ -104,6 +104,8 @@ class VirtualMachineInfo:
 		self.real_memory =  real_memory
 		self.total_memory =  total_memory
 		self.free_memory =  free_memory - Config.SYS_MEM_OFFSET
+		if self.free_memory < 0:
+			self.free_memory = 0
 		
 class HostInfo:
 	""" Class to store the Host information """
