@@ -148,7 +148,7 @@ class OpenNebula(CMPInfo):
 			res = []
 			for vm in res_vm.VM:
 				host = HostInfo(int(vm.HISTORY_RECORDS.HISTORY[0].HID), vm.HISTORY_RECORDS.HISTORY[0].HOSTNAME)
-				new_vm = VirtualMachineInfo(int(vm.ID), host, vm.MAXMEMORY, vm)
+				new_vm = VirtualMachineInfo(int(vm.ID), host, int(vm.MAXMEMORY), vm)
 				new_vm.user_id = vm.UID
 				if vm.USER_TEMPLATE.MEM_TOTAL:
 					new_vm.set_memory_values(int(vm.REALMEMORY),
