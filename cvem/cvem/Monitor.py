@@ -114,7 +114,7 @@ class Monitor:
 		
 		logger.info(vmid_msg + "Real Memory: " + str(vm.real_memory))
 		logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
-		logger.info(vmid_msg + "Free Memory: %d" % vm.free_memory)
+		logger.info(vmid_msg + "Free Memory: %d (%.2f%%)" % (vm.free_memory, vm_pct_free_memory))
 		
 		mem_over_ratio = Config.MEM_OVER
 		if vm.mem_over_ratio:
@@ -123,7 +123,7 @@ class Monitor:
 		if vm_pct_free_memory < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory > (mem_over_ratio + Config.MEM_MARGIN):
 			now = time.time()
 	
-			logger.debug(vmid_msg + "VM %s has %.2f of free memory, change the memory size" % (vm.id, vm_pct_free_memory))
+			logger.debug(vmid_msg + "VM %s has %.2f%% of free memory, change the memory size" % (vm.id, vm_pct_free_memory))
 			if vm.id in self.last_set_mem:
 				logger.debug(vmid_msg + "Last memory change was %s secs ago." % (now - self.last_set_mem[vm.id]))
 			else:
