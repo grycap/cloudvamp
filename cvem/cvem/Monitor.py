@@ -111,7 +111,6 @@ class Monitor:
 			self.mem_diff[vm.id] = vm.real_memory - vm.total_memory
 		
 		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
-		vm_pct_free_memory_inc_over_ratio = vm_pct_free_memory * (1 + mem_over_ratio / 100.0);
 		
 		vmid_msg = "VMID " + str(vm.id) + ": "
 		vm.host = self.get_host_info(vm.host.id)
@@ -121,7 +120,7 @@ class Monitor:
 		logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
 		logger.info(vmid_msg + "Free Memory: %d" % vm.free_memory)
 		
-		if vm_pct_free_memory_inc_over_ratio < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory_inc_over_ratio > (mem_over_ratio + Config.MEM_MARGIN):
+		if vm_pct_free_memory < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory > (mem_over_ratio + Config.MEM_MARGIN):
 			now = time.time()
 	
 			logger.debug(vmid_msg + "VM %s has %.2f of free memory, change the memory size" % (vm.id, vm_pct_free_memory))
@@ -135,7 +134,7 @@ class Monitor:
 			if (now - self.last_set_mem[vm.id]) < Config.COOLDOWN:
 				logger.debug(vmid_msg + "It is in cooldown period. No changing the memory.")
 			else:
-				mem_usada = vm.total_memory - vm.free_memory
+				used_mem = vm.total_memory - vm.free_memory
 				min_free_memory = Config.MIN_FREE_MEMORY
 				# check if the VM has defined a specific MIN_FREE_MEMORY value
 				if vm.min_free_mem:
@@ -150,15 +149,15 @@ class Monitor:
 						del self.no_free_memory_count[vm.id]
 					else:
 						logger.debug(vmid_msg + "Increase the mem with 50% of the original.")
-						new_mem =  int(mem_usada + (self.original_mem[vm.id] - mem_usada) * 0.5)
+						new_mem =  int(used_mem + (self.original_mem[vm.id] - used_mem) * 0.5)
 						if vm.id in self.no_free_memory_count:
 							self.no_free_memory_count[vm.id] += 1
 						else:
 							self.no_free_memory_count[vm.id] = 1
 				else:
-					multiplier = 1.0 + (mem_over_ratio/100.0)
-					logger.debug(vmid_msg + "The used memory %d is multiplied by %.2f" % (int(mem_usada), multiplier))
-					new_mem =  int(mem_usada * multiplier)
+					divider = 1.0 - (mem_over_ratio/100.0)
+					logger.debug(vmid_msg + "The used memory %d is divided by %.2f" % (int(used_mem), divider))
+					new_mem =  int(used_mem / divider)
 				
 				# Check for minimum memory
 				if new_mem < Config.MEM_MIN:
