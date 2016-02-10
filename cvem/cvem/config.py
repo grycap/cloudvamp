@@ -46,7 +46,7 @@ class Config:
 	# Difference between the amount of the current memory of the VM and the new one to be set to perform the operation (in KB)     
 	MEM_DIFF_TO_CHANGE = 1024
 	# The Memory Overprovisioning Percentage
-	MEM_OVER = 40.0
+	MEM_OVER = 30.0
 	# The Memory Overprovisioning Percentage margin
 	MEM_MARGIN = 5
 	# Cooldown Time (in secs)
