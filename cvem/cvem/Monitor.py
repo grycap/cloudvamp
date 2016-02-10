@@ -164,8 +164,9 @@ class Monitor:
 				if new_mem < Config.MEM_MIN:
 					new_mem = Config.MEM_MIN
 					
-				# add diff to new_mem value
+				# add diff to new_mem value and to total_memory to make it real_memory (vm.real_memory has delays between updates)
 				new_mem += self.mem_diff[vm.id]
+				vm.total_memory += self.mem_diff[vm.id]
 				
 				# We never set more memory that the initial amount
 				if new_mem > self.original_mem[vm.id]:
