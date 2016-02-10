@@ -103,14 +103,10 @@ class Monitor:
 		"""
 		Main function of the monitor
 		""" 
-		mem_over_ratio = Config.MEM_OVER
-		if vm.mem_over_ratio:
-			mem_over_ratio = vm.mem_over_ratio		
+		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
 		
 		if vm.id not in self.mem_diff:
 			self.mem_diff[vm.id] = vm.real_memory - vm.total_memory
-		
-		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
 		
 		vmid_msg = "VMID " + str(vm.id) + ": "
 		vm.host = self.get_host_info(vm.host.id)
@@ -120,6 +116,10 @@ class Monitor:
 		logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
 		logger.info(vmid_msg + "Free Memory: %d" % vm.free_memory)
 		
+		mem_over_ratio = Config.MEM_OVER
+		if vm.mem_over_ratio:
+			mem_over_ratio = vm.mem_over_ratio
+					
 		if vm_pct_free_memory < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory > (mem_over_ratio + Config.MEM_MARGIN):
 			now = time.time()
 	
