@@ -110,7 +110,6 @@ class Monitor:
 		
 		vmid_msg = "VMID " + str(vm.id) + ": "
 		vm.host = self.get_host_info(vm.host.id)
-		#logger.debug(vmid_msg + "VM is in Host: " + vm.host.name + ". PACKEDMEMORY = " + str(vm.host.raw.TEMPLATE.PACKEDMEMORY))
 		
 		logger.info(vmid_msg + "Real Memory: " + str(vm.real_memory))
 		logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
