@@ -35,7 +35,8 @@ class DISK(XMLObject):
 		values = ['CLONE','READONLY','SAVE','SOURCE','TARGET' ]
 
 class TEMPLATE(XMLObject):
-		values = [ 'CPU', 'MEMORY', 'NAME', 'RANK', 'REQUIREMENTS', 'VMID', 'VCPU' ]
+		# In ONE versions <= 4.12 PACKEDMEMORY, MAXMEMORY and REALMEMORY are located here
+		values = [ 'CPU', 'MEMORY', 'NAME', 'RANK', 'REQUIREMENTS', 'VMID', 'VCPU', 'PACKEDMEMORY', 'MAXMEMORY', 'REALMEMORY' ]
 		tuples = { 'GRAPHICS': GRAPHICS, 'OS': OS }
 		tuples_lists = { 'DISK': DISK, 'NIC': NIC }
 		numeric = [ 'CPU', 'MEMORY', 'VCPU' ]
@@ -62,6 +63,7 @@ class VM(XMLObject):
 		STATE_FAILED=7
 		STATE_STR = {'0': 'init', '1': 'pending', '2': 'hold', '3': 'active', '4': 'stopped', '5': 'suspended', '6': 'done', '7': 'failed' }
 		LCM_STATE_STR={'0':'init','1':'prologing','2':'booting','3':'running','4':'migrating','5':'saving (stop)','6':'saving (suspend)','7':'saving (migrate)', '8':'prologing (migration)', '9':'prologing (resume)', '10': 'epilog (stop)','11':'epilog', '12':'cancel','13':'failure','14':'delete','15':'unknown'}
+		# In ONE versions >= 4.14 PACKEDMEMORY, MAXMEMORY and REALMEMORY are located here
 		values = [ 'ID','UID','NAME','LAST_POLL','STATE','LCM_STATE','DEPLOY_ID','MEMORY','CPU','NET_TX','NET_RX', 'STIME','ETIME', 'PACKEDMEMORY', 'MAXMEMORY', 'REALMEMORY' ]
 		tuples = { 'TEMPLATE': TEMPLATE, 'HISTORY_RECORDS': HISTORY_RECORDS, 'USER_TEMPLATE': USER_TEMPLATE }
 		numeric = [ 'ID', 'UID', 'STATE', 'LCM_STATE', 'STIME','ETIME' ]
@@ -151,7 +153,11 @@ class OpenNebula(CMPInfo):
 				new_vm = VirtualMachineInfo(int(vm.ID), host, int(vm.TEMPLATE.MEMORY) * 1024, vm)
 				new_vm.user_id = vm.UID
 				if vm.USER_TEMPLATE.MEM_TOTAL:
-					new_vm.set_memory_values(int(vm.REALMEMORY),
+					# to make it work on all ONE versions
+					real_memory = vm.TEMPLATE.REALMEMORY
+					if not real_memory:
+						real_memory = vm.REALMEMORY
+					new_vm.set_memory_values(int(real_memory),
 										int(vm.USER_TEMPLATE.MEM_TOTAL),
 										int(vm.USER_TEMPLATE.MEM_FREE))
 					if vm.USER_TEMPLATE.MIN_FREE_MEM:
