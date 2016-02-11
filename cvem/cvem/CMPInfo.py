@@ -78,7 +78,7 @@ class VirtualMachineInfo:
 		""" Total memory reported by the S.O. (less than real_memory) """
 		self.free_memory =  None
 		""" Free memory of the VM """
-		self.allocated_memory = None
+		self.allocated_memory = allocated_memory
 		""" Amount of memory originally allocated by the CMP """
 		self.min_free_mem = None
 		""" Minimum amount of memory that will trigger the exponential backoff algorithm
@@ -104,6 +104,8 @@ class VirtualMachineInfo:
 		self.real_memory =  real_memory
 		self.total_memory =  total_memory
 		self.free_memory =  free_memory - Config.SYS_MEM_OFFSET
+		if self.free_memory < 0:
+			self.free_memory = 0
 		
 class HostInfo:
 	""" Class to store the Host information """
