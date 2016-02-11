@@ -21,6 +21,23 @@ import os
 from config import Config, logger
 from cpyutils.runcommand import runcommand
 
+class VMMonitorData:
+	"""
+	Class to store monitoring information for each VM 
+	"""
+
+	def __init__(self, vm_id):
+		self.id = vm_id
+		self.last_set_mem = None
+		""" The timestamp of the last modification of the memory for each VM """
+		self.original_mem = None
+		""" The initial memory assigned to each VM """
+		self.mem_diff = None
+		""" The difference between the initial memory 
+		assigned to each VM and the memory provided by the VM monitor """
+		self.no_free_memory_count = 0
+		""" The number of consecutive occurrences of not having free memory in each VM """
+
 class Monitor:
 	"""
 	Base class to monitors
@@ -29,19 +46,29 @@ class Monitor:
 	def __init__(self, cmpo = None):
 		self.cmp = cmpo
 		""" Object child of CMPInfo to connect with the underlying CMP """
-		self.last_set_mem = {}
-		""" Dict to store the timestamp of the last modification of the memory for each VM """
-		self.original_mem = {}
-		""" Dict to store the initial memory assigned to each VM """
-		self.mem_diff = {}
-		""" Dict to store the difference between the initial memory 
-		assigned to each VM and the memory provided by the VM monitor """
 		self.last_migration = {}
 		""" Dict to store the timestamp of the last migration operation made in each host """
-		self.no_free_memory_count = {}
-		""" Dict to store the the number of consecutive occurrences of not having free memory in each VM """
+		self.vm_data = {}
+		""" Dict to store the monitoring information for each VM """
 		
 		self.load_data()
+
+	def clean_old_data(self, current_vms):
+		"""
+		Clean old data from the Monitor
+		Delete the values of VMs that do not appear in the
+		monitoring system.
+		To avoid an uncontrolled increase of memory usage.
+		"""
+		current_vmids = [vm.id for vm in current_vms]
+
+		try:
+			for vmid in self.vm_data.keys():
+				if vmid not in current_vmids:
+					logger.debug("Removing data for old VM ID: %s" % str(vmid))
+					del self.vm_data[vmid]
+		except:
+			logger.exception("ERROR cleaning old data.")
 	
 	def load_data(self):
 		"""
@@ -50,9 +77,7 @@ class Monitor:
 		if os.path.isfile(Config.DATA_FILE):
 			try:
 				data_file = open(Config.DATA_FILE, 'r')
-				self.last_set_mem = pickle.load(data_file)
-				self.original_mem = pickle.load(data_file)
-				self.mem_diff = pickle.load(data_file)
+				self.vm_data = pickle.load(data_file)
 				self.last_migration = pickle.load(data_file)
 				data_file.close()
 			except Exception:
@@ -66,9 +91,7 @@ class Monitor:
 		"""
 		try:
 			data_file = open(Config.DATA_FILE, 'wb')
-			pickle.dump(self.last_set_mem, data_file)
-			pickle.dump(self.original_mem, data_file)
-			pickle.dump(self.mem_diff, data_file)
+			pickle.dump(self.vm_data, data_file)
 			pickle.dump(self.last_migration, data_file)
 			data_file.close()
 		except Exception:
@@ -105,8 +128,11 @@ class Monitor:
 		""" 
 		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
 		
-		if vm.id not in self.mem_diff:
-			self.mem_diff[vm.id] = vm.real_memory - vm.total_memory
+		if vm.id not in self.vm_data:
+			self.vm_data[vm.id] = VMMonitorData(vm.id)
+		
+		if self.vm_data[vm.id].mem_diff is None:
+			self.vm_data[vm.id].mem_diff = vm.real_memory - vm.total_memory
 		
 		vmid_msg = "VMID " + str(vm.id) + ": "
 		vm.host = self.get_host_info(vm.host.id)
@@ -123,14 +149,14 @@ class Monitor:
 			now = time.time()
 	
 			logger.debug(vmid_msg + "VM %s has %.2f%% of free memory, change the memory size" % (vm.id, vm_pct_free_memory))
-			if vm.id in self.last_set_mem:
-				logger.debug(vmid_msg + "Last memory change was %s secs ago." % (now - self.last_set_mem[vm.id]))
+			if self.vm_data[vm.id].last_set_mem is not None:
+				logger.debug(vmid_msg + "Last memory change was %s secs ago." % (now - self.vm_data[vm.id].last_set_mem))
 			else:
-				self.original_mem[vm.id] = vm.allocated_memory
-				logger.debug(vmid_msg + "The memory of this VM has been never modified. Store the initial memory  : " + str(self.original_mem[vm.id]))
-				self.last_set_mem[vm.id] = now
+				self.vm_data[vm.id].original_mem = vm.allocated_memory
+				logger.debug(vmid_msg + "The memory of this VM has been never modified. Store the initial memory  : " + str(self.vm_data[vm.id].original_mem))
+				self.vm_data[vm.id].last_set_mem = now
 	
-			if (now - self.last_set_mem[vm.id]) < Config.COOLDOWN:
+			if (now - self.vm_data[vm.id].last_set_mem) < Config.COOLDOWN:
 				logger.debug(vmid_msg + "It is in cooldown period. No changing the memory.")
 			else:
 				used_mem = vm.total_memory - vm.free_memory
@@ -141,18 +167,15 @@ class Monitor:
 				# it not free memory use exponential backoff idea
 				if vm.free_memory <= min_free_memory:
 					logger.debug(vmid_msg + "No free memory in the VM!")
-					if vm.id in self.no_free_memory_count and self.no_free_memory_count[vm.id] > 1:
+					if self.vm_data[vm.id].no_free_memory_count > 1:
 						# if this is the third time with no free memory use the original size
 						logger.debug(vmid_msg + "Increase the mem to the original size.")
-						new_mem =  self.original_mem[vm.id]
-						del self.no_free_memory_count[vm.id]
+						new_mem =  self.vm_data[vm.id].original_mem
+						self.vm_data[vm.id].no_free_memory_count = 0
 					else:
 						logger.debug(vmid_msg + "Increase the mem with 50% of the original.")
-						new_mem =  int(used_mem + (self.original_mem[vm.id] - used_mem) * 0.5)
-						if vm.id in self.no_free_memory_count:
-							self.no_free_memory_count[vm.id] += 1
-						else:
-							self.no_free_memory_count[vm.id] = 1
+						new_mem =  int(used_mem + (self.vm_data[vm.id].original_mem - used_mem) * 0.5)
+						self.vm_data[vm.id].no_free_memory_count += 1
 				else:
 					divider = 1.0 - (mem_over_ratio/100.0)
 					logger.debug(vmid_msg + "The used memory %d is divided by %.2f" % (int(used_mem), divider))
@@ -163,12 +186,12 @@ class Monitor:
 					new_mem = Config.MEM_MIN
 					
 				# add diff to new_mem value and to total_memory to make it real_memory (vm.real_memory has delays between updates)
-				new_mem += self.mem_diff[vm.id]
-				vm.total_memory += self.mem_diff[vm.id]
+				new_mem += self.vm_data[vm.id].mem_diff
+				vm.total_memory += self.vm_data[vm.id].mem_diff
 				
 				# We never set more memory that the initial amount
-				if new_mem > self.original_mem[vm.id]:
-					new_mem = self.original_mem[vm.id]
+				if new_mem > self.vm_data[vm.id].original_mem:
+					new_mem = self.vm_data[vm.id].original_mem
 
 				if abs(int(vm.total_memory)-new_mem) < Config.MEM_DIFF_TO_CHANGE:
 					logger.debug(vmid_msg + "Not changing the memory. Too small difference.")
@@ -188,10 +211,10 @@ class Monitor:
 						else:
 							logger.debug(vmid_msg + "The host " + vm.host.name + " has enough free memory.")
 							self.change_memory(vm.id, vm.host, new_mem)
-							self.last_set_mem[vm.id] = now
+							self.vm_data[vm.id].last_set_mem = now
 					else:
 						self.change_memory(vm.id, vm.host, new_mem)
-						self.last_set_mem[vm.id] = now
+						self.vm_data[vm.id].last_set_mem = now
 
 	@staticmethod
 	def get_monitored_vms(vm_list, user = None):
@@ -223,6 +246,8 @@ class Monitor:
 				logger.debug("There is no VM with monitoring information.")
 	
 			logger.debug("-----------------------------------")
+
+			self.clean_old_data(monitored_vms)
 			self.save_data()
 			time.sleep(Config.DELAY)
 
