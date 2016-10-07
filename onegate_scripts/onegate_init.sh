@@ -16,10 +16,11 @@
 #--------------------------------------------------------------------------- #
 
 DELAY=5
+PRIORITY=-19
 
 source /mnt/context.sh 
 
 cp -f /mnt/onegate_publisher.sh /root/onegate_publisher.sh
 chmod +x /root/onegate_publisher.sh
 cd /root
-nohup /root/onegate_publisher.sh $ONEGATE_ENDPOINT/vm `cat /mnt/token.txt` $VMID $DELAY > /dev/null 2> /dev/null &
+nohup nice -n $PRIORITY /root/onegate_publisher.sh $ONEGATE_ENDPOINT/vm `cat /mnt/token.txt` $VMID $DELAY > /dev/null 2> /dev/null &
