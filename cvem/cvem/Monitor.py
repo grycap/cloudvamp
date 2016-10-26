@@ -126,95 +126,98 @@ class Monitor:
 		"""
 		Main function of the monitor
 		""" 
-		vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
-		
-		if vm.id not in self.vm_data:
-			self.vm_data[vm.id] = VMMonitorData(vm.id)
-		
-		if self.vm_data[vm.id].mem_diff is None:
-			self.vm_data[vm.id].mem_diff = vm.real_memory - vm.total_memory
-		
-		vmid_msg = "VMID " + str(vm.id) + ": "
-		vm.host = self.get_host_info(vm.host.id)
-		
-		logger.info(vmid_msg + "Real Memory: " + str(vm.real_memory))
-		logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
-		logger.info(vmid_msg + "Free Memory: %d (%.2f%%)" % (vm.free_memory, vm_pct_free_memory))
-		
-		mem_over_ratio = Config.MEM_OVER
-		if vm.mem_over_ratio:
-			mem_over_ratio = vm.mem_over_ratio
+		try:
+			vm_pct_free_memory = float(vm.free_memory)/float(vm.total_memory) * 100.0
 
-		if vm_pct_free_memory < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory > (mem_over_ratio + Config.MEM_MARGIN):
-			now = time.time()
-	
-			logger.debug(vmid_msg + "VM %s has %.2f%% of free memory, change the memory size" % (vm.id, vm_pct_free_memory))
-			if self.vm_data[vm.id].last_set_mem is not None:
-				logger.debug(vmid_msg + "Last memory change was %s secs ago." % (now - self.vm_data[vm.id].last_set_mem))
-			else:
-				self.vm_data[vm.id].original_mem = vm.allocated_memory
-				logger.debug(vmid_msg + "The memory of this VM has been never modified. Store the initial memory  : " + str(self.vm_data[vm.id].original_mem))
-				self.vm_data[vm.id].last_set_mem = now
-	
-			if (now - self.vm_data[vm.id].last_set_mem) < Config.COOLDOWN:
-				logger.debug(vmid_msg + "It is in cooldown period. No changing the memory.")
-			else:
-				used_mem = vm.total_memory - vm.free_memory
-				min_free_memory = Config.MIN_FREE_MEMORY
-				# check if the VM has defined a specific MIN_FREE_MEMORY value
-				if vm.min_free_mem:
-					min_free_memory = vm.min_free_mem
-				# it not free memory use exponential backoff idea
-				if vm.free_memory <= min_free_memory:
-					logger.debug(vmid_msg + "No free memory in the VM!")
-					if self.vm_data[vm.id].no_free_memory_count > 1:
-						# if this is the third time with no free memory use the original size
-						logger.debug(vmid_msg + "Increase the mem to the original size.")
-						new_mem =  self.vm_data[vm.id].original_mem
-						self.vm_data[vm.id].no_free_memory_count = 0
-					else:
-						logger.debug(vmid_msg + "Increase the mem with 50% of the original.")
-						new_mem =  int(used_mem + (self.vm_data[vm.id].original_mem - used_mem) * 0.5)
-						self.vm_data[vm.id].no_free_memory_count += 1
-				else:
-					divider = 1.0 - (mem_over_ratio/100.0)
-					logger.debug(vmid_msg + "The used memory %d is divided by %.2f" % (int(used_mem), divider))
-					new_mem =  int(used_mem / divider)
-				
-				# Check for minimum memory
-				if new_mem < Config.MEM_MIN:
-					new_mem = Config.MEM_MIN
-					
-				# add diff to new_mem value and to total_memory to make it real_memory (vm.real_memory has delays between updates)
-				new_mem += self.vm_data[vm.id].mem_diff
-				vm.total_memory += self.vm_data[vm.id].mem_diff
-				
-				# We never set more memory that the initial amount
-				if new_mem > self.vm_data[vm.id].original_mem:
-					new_mem = self.vm_data[vm.id].original_mem
+			if vm.id not in self.vm_data:
+				self.vm_data[vm.id] = VMMonitorData(vm.id)
+			
+			if self.vm_data[vm.id].mem_diff is None:
+				self.vm_data[vm.id].mem_diff = vm.real_memory - vm.total_memory
 
-				if abs(int(vm.total_memory)-new_mem) < Config.MEM_DIFF_TO_CHANGE:
-					logger.debug(vmid_msg + "Not changing the memory. Too small difference.")
+			vmid_msg = "VMID " + str(vm.id) + ": "
+			vm.host = self.get_host_info(vm.host.id)
+
+			logger.info(vmid_msg + "Real Memory: " + str(vm.real_memory))
+			logger.info(vmid_msg + "Total Memory: " + str(vm.total_memory))
+			logger.info(vmid_msg + "Free Memory: %d (%.2f%%)" % (vm.free_memory, vm_pct_free_memory))
+
+			mem_over_ratio = Config.MEM_OVER
+			if vm.mem_over_ratio:
+				mem_over_ratio = vm.mem_over_ratio
+
+			if vm_pct_free_memory < (mem_over_ratio - Config.MEM_MARGIN) or vm_pct_free_memory > (mem_over_ratio + Config.MEM_MARGIN):
+				now = time.time()
+		
+				logger.debug(vmid_msg + "VM %s has %.2f%% of free memory, change the memory size" % (vm.id, vm_pct_free_memory))
+				if self.vm_data[vm.id].last_set_mem is not None:
+					logger.debug(vmid_msg + "Last memory change was %s secs ago." % (now - self.vm_data[vm.id].last_set_mem))
 				else:
-					logger.debug(vmid_msg + "Changing the memory from %d to %d" % (vm.total_memory, new_mem))
-					if new_mem > vm.total_memory:
-						# If we increase the memory we must check if the host has enough free space to avoid overcommitting 
-						if not self.host_has_memory_free(vm.host,new_mem-vm.total_memory):
-							# The host has not enough free memory. Let's try to migrate a VM.
-							logger.debug(vmid_msg + "The host " + vm.host.name + " has not enough free memory!. Let's try to migrate a VM.")
-							if vm.host.id in self.last_migration and (now - self.last_migration[vm.host.id]) < Config.MIGRATION_COOLDOWN:
-								logger.debug("The host %s is in migration cooldown period, let's wait.." % vm.host.name)
-							else: 
-								if self.migrate_vm(vm.id, vm.host, all_vms):
-									logger.debug("A VM has been migrated from host %d. Store the timestamp." % vm.host.id)
-									self.last_migration[vm.host.id] = now
+					self.vm_data[vm.id].original_mem = vm.allocated_memory
+					logger.debug(vmid_msg + "The memory of this VM has been never modified. Store the initial memory  : " + str(self.vm_data[vm.id].original_mem))
+					self.vm_data[vm.id].last_set_mem = now
+
+				if (now - self.vm_data[vm.id].last_set_mem) < Config.COOLDOWN:
+					logger.debug(vmid_msg + "It is in cooldown period. No changing the memory.")
+				else:
+					used_mem = vm.total_memory - vm.free_memory
+					min_free_memory = Config.MIN_FREE_MEMORY
+					# check if the VM has defined a specific MIN_FREE_MEMORY value
+					if vm.min_free_mem:
+						min_free_memory = vm.min_free_mem
+					# it not free memory use exponential backoff idea
+					if vm.free_memory <= min_free_memory:
+						logger.debug(vmid_msg + "No free memory in the VM!")
+						if self.vm_data[vm.id].no_free_memory_count > 1:
+							# if this is the third time with no free memory use the original size
+							logger.debug(vmid_msg + "Increase the mem to the original size.")
+							new_mem =  self.vm_data[vm.id].original_mem
+							self.vm_data[vm.id].no_free_memory_count = 0
 						else:
-							logger.debug(vmid_msg + "The host " + vm.host.name + " has enough free memory.")
+							logger.debug(vmid_msg + "Increase the mem with 50% of the original.")
+							new_mem =  int(used_mem + (self.vm_data[vm.id].original_mem - used_mem) * 0.5)
+							self.vm_data[vm.id].no_free_memory_count += 1
+					else:
+						divider = 1.0 - (mem_over_ratio/100.0)
+						logger.debug(vmid_msg + "The used memory %d is divided by %.2f" % (int(used_mem), divider))
+						new_mem =  int(used_mem / divider)
+
+					# Check for minimum memory
+					if new_mem < Config.MEM_MIN:
+						new_mem = Config.MEM_MIN
+
+					# add diff to new_mem value and to total_memory to make it real_memory (vm.real_memory has delays between updates)
+					new_mem += self.vm_data[vm.id].mem_diff
+					vm.total_memory += self.vm_data[vm.id].mem_diff
+					
+					# We never set more memory that the initial amount
+					if new_mem > self.vm_data[vm.id].original_mem:
+						new_mem = self.vm_data[vm.id].original_mem
+	
+					if abs(int(vm.total_memory)-new_mem) < Config.MEM_DIFF_TO_CHANGE:
+						logger.debug(vmid_msg + "Not changing the memory. Too small difference.")
+					else:
+						logger.debug(vmid_msg + "Changing the memory from %d to %d" % (vm.total_memory, new_mem))
+						if new_mem > vm.total_memory:
+							# If we increase the memory we must check if the host has enough free space to avoid overcommitting 
+							if not self.host_has_memory_free(vm.host,new_mem-vm.total_memory):
+								# The host has not enough free memory. Let's try to migrate a VM.
+								logger.debug(vmid_msg + "The host " + vm.host.name + " has not enough free memory!. Let's try to migrate a VM.")
+								if vm.host.id in self.last_migration and (now - self.last_migration[vm.host.id]) < Config.MIGRATION_COOLDOWN:
+									logger.debug("The host %s is in migration cooldown period, let's wait.." % vm.host.name)
+								else: 
+									if self.migrate_vm(vm.id, vm.host, all_vms):
+										logger.debug("A VM has been migrated from host %d. Store the timestamp." % vm.host.id)
+										self.last_migration[vm.host.id] = now
+							else:
+								logger.debug(vmid_msg + "The host " + vm.host.name + " has enough free memory.")
+								self.change_memory(vm.id, vm.host, new_mem)
+								self.vm_data[vm.id].last_set_mem = now
+						else:
 							self.change_memory(vm.id, vm.host, new_mem)
 							self.vm_data[vm.id].last_set_mem = now
-					else:
-						self.change_memory(vm.id, vm.host, new_mem)
-						self.vm_data[vm.id].last_set_mem = now
+		except:
+			logger.exception("Error in monitor loop!")
 
 	@staticmethod
 	def get_monitored_vms(vm_list, user = None):
@@ -222,12 +225,15 @@ class Monitor:
 		Get the list of VMs that has the monitored metrics available and filtered by user
 		"""
 		res = []
-		for vm in vm_list:
-			if vm.free_memory:
-				# Check the user filter
-				if not user or vm.user_id == user:  
-					res.append(vm)
-	
+		try:
+			for vm in vm_list:
+				if vm.free_memory:
+					# Check the user filter
+					if not user or vm.user_id == user:  
+						res.append(vm)
+		except:
+			logger.exception("Error monitoring VMs!")
+
 		return res
 
 	def start(self):
