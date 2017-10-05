@@ -72,6 +72,11 @@ class Config:
 	CHANGE_MEMORY_CMD = "virsh -c 'qemu+ssh://{hostname}/system' setmem one-{vmid} {newmemory}"
 	# Class child of cvem Monitor to be executed
 	MONITOR_CLASS = 'connectors.one.OpenNebula.MonitorONE'
+	# Enable the migration of the VMs in case of the host has not enough free memory
+	MIGRATION = True
+	# In case MIGRATION is disabled force increasing the memory of the VM
+	# although the host has not enough free memory
+	FORCE_INCREASE_MEMORY = False
 
 try:
 	# First try locally

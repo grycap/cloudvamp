@@ -49,8 +49,8 @@ class HISTORY_RECORDS(XMLObject):
 	tuples_lists = { 'HISTORY': HISTORY }
 
 class USER_TEMPLATE(XMLObject):
-		values = [ 'MEM_FREE', 'MEM_TOTAL', 'MEM_TOTAL_REAL', 'MIN_FREE_MEM', 'MEM_OVER']
-		numeric = [ 'MEM_FREE', 'MEM_TOTAL', 'MEM_TOTAL_REAL', 'MIN_FREE_MEM', 'MEM_OVER']
+		values = [ 'MEM_FREE', 'MEM_TOTAL', 'MEM_TOTAL_REAL', 'MIN_FREE_MEM', 'MEM_OVER', 'TIMESTAMP']
+		numeric = [ 'MEM_FREE', 'MEM_TOTAL', 'MEM_TOTAL_REAL', 'MIN_FREE_MEM', 'MEM_OVER',  'TIMESTAMP']
 
 class VM(XMLObject):
 		STATE_INIT=0
@@ -149,26 +149,31 @@ class OpenNebula(CMPInfo):
 			res_vm = VM_POOL(res_info)
 			res = []
 			for vm in res_vm.VM:
-				host = HostInfo(int(vm.HISTORY_RECORDS.HISTORY[0].HID), vm.HISTORY_RECORDS.HISTORY[0].HOSTNAME)
-				new_vm = VirtualMachineInfo(int(vm.ID), host, int(vm.TEMPLATE.MEMORY) * 1024, vm)
-				new_vm.user_id = vm.UID
-				if vm.USER_TEMPLATE.MEM_TOTAL:
-					# to make it work on all ONE versions
-					real_memory = vm.TEMPLATE.REALMEMORY
-					if not real_memory:
-						real_memory = vm.REALMEMORY
-					new_vm.set_memory_values(int(real_memory),
-										int(vm.USER_TEMPLATE.MEM_TOTAL),
-										int(vm.USER_TEMPLATE.MEM_FREE))
-					if vm.USER_TEMPLATE.MIN_FREE_MEM:
-						new_vm.min_free_mem = vm.USER_TEMPLATE.MIN_FREE_MEM
-					if vm.USER_TEMPLATE.MEM_OVER:
-						new_vm.mem_over_ratio = vm.USER_TEMPLATE.MEM_OVER
-				
-					# publish MEM properties to the VM user template to show the values to the user 
-					OpenNebula._publish_mem_info(new_vm)
+				try:
+					host = HostInfo(int(vm.HISTORY_RECORDS.HISTORY[0].HID), vm.HISTORY_RECORDS.HISTORY[0].HOSTNAME)
+					new_vm = VirtualMachineInfo(int(vm.ID), host, int(vm.TEMPLATE.MEMORY) * 1024, vm)
+					new_vm.user_id = vm.UID
+					if vm.USER_TEMPLATE.MEM_TOTAL:
+						# to make it work on all ONE versions
+						real_memory = vm.TEMPLATE.REALMEMORY
+						if not real_memory:
+							real_memory = vm.REALMEMORY
+						new_vm.set_memory_values(int(real_memory),
+											int(vm.USER_TEMPLATE.MEM_TOTAL),
+											int(vm.USER_TEMPLATE.MEM_FREE))
+						if vm.USER_TEMPLATE.MIN_FREE_MEM:
+							new_vm.min_free_mem = vm.USER_TEMPLATE.MIN_FREE_MEM
+						if vm.USER_TEMPLATE.MEM_OVER:
+							new_vm.mem_over_ratio = vm.USER_TEMPLATE.MEM_OVER
+						if vm.USER_TEMPLATE.TIMESTAMP:
+							new_vm.timestamp = vm.USER_TEMPLATE.TIMESTAMP
 
-				res.append(new_vm)
+						# publish MEM properties to the VM user template to show the values to the user
+						OpenNebula._publish_mem_info(new_vm)
+
+					res.append(new_vm)
+				except:
+					logger.exception("Error getting the VM info %s." % vm.ID)
 				
 			return res
 		else:

@@ -95,7 +95,7 @@ function status() {
 # See how we were called.
 case "$1" in
   start)
-        # check if the IM daemon is running
+        # check if the CVEM daemon is running
         if ! [ -f ${PIDFILE} ]
         then
                 start
