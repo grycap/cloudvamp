@@ -199,16 +199,26 @@ class Monitor:
 					else:
 						logger.debug(vmid_msg + "Changing the memory from %d to %d" % (vm.total_memory, new_mem))
 						if new_mem > vm.total_memory:
-							# If we increase the memory we must check if the host has enough free space to avoid overcommitting 
+							# If we increase the memory we must check if the host has enough free space
 							if not self.host_has_memory_free(vm.host,new_mem-vm.total_memory):
 								# The host has not enough free memory. Let's try to migrate a VM.
-								logger.debug(vmid_msg + "The host " + vm.host.name + " has not enough free memory!. Let's try to migrate a VM.")
-								if vm.host.id in self.last_migration and (now - self.last_migration[vm.host.id]) < Config.MIGRATION_COOLDOWN:
-									logger.debug("The host %s is in migration cooldown period, let's wait.." % vm.host.name)
-								else: 
-									if self.migrate_vm(vm.id, vm.host, all_vms):
-										logger.debug("A VM has been migrated from host %d. Store the timestamp." % vm.host.id)
-										self.last_migration[vm.host.id] = now
+								logger.debug(vmid_msg + "The host " + vm.host.name + " has not enough free memory!")
+								if Config.MIGRATION:
+									logger.debug(vmid_msg + "Let's try to migrate a VM.")
+									if vm.host.id in self.last_migration and (now - self.last_migration[vm.host.id]) < Config.MIGRATION_COOLDOWN:
+										logger.debug("The host %s is in migration cooldown period, let's wait.." % vm.host.name)
+									else:
+										if self.migrate_vm(vm.id, vm.host, all_vms):
+											logger.debug("A VM has been migrated from host %d. Store the timestamp." % vm.host.id)
+											self.last_migration[vm.host.id] = now
+								else:
+									logger.debug(vmid_msg + "Migration is disabled.")
+									if Config.FORCE_INCREASE_MEMORY:
+										logger.debug(vmid_msg + "But Force increase memory is activated. Changing memory.")
+										self.change_memory(vm.id, vm.host, new_mem)
+										self.vm_data[vm.id].last_set_mem = now
+									else:
+										logger.debug(vmid_msg + "Not increase memory.")
 							else:
 								logger.debug(vmid_msg + "The host " + vm.host.name + " has enough free memory.")
 								self.change_memory(vm.id, vm.host, new_mem)
